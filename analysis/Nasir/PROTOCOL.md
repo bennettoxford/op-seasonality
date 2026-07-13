@@ -2,7 +2,7 @@
 
 # 1. Project Team/Authors
 
-- **Abdulrasheed, Nasir**: Conceptualisation, formal analysis, methodology, software, validation, visualisation.
+- **Abdulrasheed, Nasir**: _`Conceptualisation`_, formal analysis, methodology, software, validation, visualisation.
 - **Andrews, Colm**: Conceptualisation, supervision, project administration, methodology, software, validation.
 - **Ojedele, Lola**: Project administration, supervision, software, validation
 
@@ -10,11 +10,16 @@
 
 **Research question**: *How well does FFT-based seasonality autodetection perform compared to ARIMA models on the monthly practice-level English Prescribing Data (EPD) from March 2016 to April 2026?*
 
-Autodetecting seasonality in prescription patterns of drugs is a useful, albeit difficult-to-implement, capability. The difficulty stems from the complexity of time-series data, with the best method being different depending on the data. This implementation will use a Fast Fourier Transform (FFT)-based method and build on the work in source 1 below. While FFT-based and hybrid FFT/ARIMA methods for time series analysis have been developed and applied elsewhere, they have yet to be applied to the EPD and automated in this manner.
+Autodetecting seasonality in prescription patterns of drugs is a useful, albeit difficult-to-implement, capability. The difficulty stems from the complexity of time-series data, with the best method being different depending on the data. This implementation will use a Fast Fourier Transform (FFT)-based method and build on the work in [reference 1](#6-references). While FFT-based and hybrid FFT/ARIMA methods for time series analysis have been developed and applied elsewhere, they have yet to be applied to the EPD and automated in this manner. The FFT-based score used in the initial pipeline is:
+
+$
+score = 
+$
 
 This project will help provide an automated process and tool to detect seasonality patterns in primary care medication prescribing in England.
 
 ## 3. Objectives
+
 ### 3.1. Primary Objectives
 - To build a Quarto notebook that takes monthly prescribing time-series data and detects seasonality in the prescribing of any of the drugs in the data (if any) using an FFT-based approach.
 - To compare the performance of the approach above with more traditional modelling methods, such as ARIMA, on the same dataset using drugs with established prescribing seasonality, such as antidepressants for seasonal affective disorder (SAD).
@@ -35,7 +40,7 @@ This study is a retrospective time-series analysis of monthly practice-level pre
 The OpenPrescribing database imports openly accessible prescribing data from the large monthly files published by the NHSBSA, which contain data on cost and items prescribed for each month, for every typical GP in England since mid-2010. These data are sourced from community pharmacy claims data and, therefore, contain all items that were dispensed. This data is not linked to patient-level data so does not allow for identification of sub-populations of interest.
 
 ## 4.3. Study Population
-We will extract all available prescribing data, limited to institutions with setting code 4 - general practices, according to the NHS Digital dataset of practice characteristics.5 This excludes all other organisations such as prisons and out-of-hours services as they are not represented fully or consistently in the OpenPrescribing dataset since many of these prescriptions would not be dispensed in community pharmacies.
+We will extract all available prescribing data, limited to institutions with setting code 4 - general practices, according to the NHS Digital dataset of practice characteristics. This excludes all other organisations such as prisons and out-of-hours services as they are not represented fully or consistently in the OpenPrescribing dataset since many of these prescriptions would not be dispensed in community pharmacies.
 
 ## 4.4. Drug Definition
 The group of drugs used in this study are grouped under the following codelists:
@@ -52,6 +57,7 @@ The above described measures will be stratified by the following:
 
 ### 4.5.2. Sensitivity Analyses
 
+
 ## 4.6. Statistical Analysis
 The project starts with replicating the initial FFT-based Python pipeline in R and Quarto using the `tidyverts` package ecosystem and the `fftw` package. The pipeline will incorporate:
 1. Time series plots: time plots, seasonal plots, and subseries plots
@@ -66,7 +72,13 @@ The project starts with replicating the initial FFT-based Python pipeline in R a
 
 ### Limitation
 
-# Results
+# 5. Results
 ### Table Shells / Mockup Figures
 
-# References
+# 6. References
+1. https://nbviewer.org/github/tdbudden/hscictools/blob/master/notebooks/Seasonality%20of%20products.ipynb 
+2. Lansdall-Welfare, T., Lightman, S., & Cristianini, N. (2019). Seasonal variation in antidepressant prescriptions, environmental light and web queries for seasonal affective disorder. The British Journal of Psychiatry, 215(2), 481–484. https://doi.org/10.1192/bjp.2019.40
+3. Musbah, H., El-Hawary, M., & Aly, H. (2019). Identifying Seasonality in Time Series by Applying Fast Fourier Transform. 2019 IEEE Electrical Power and Energy Conference (EPEC), 1–4. https://doi.org/10.1109/EPEC47565.2019.9074776
+4. Musbah, H., Aly, H. H., & Little, T. A. (2020). A Novel Approach for Seasonality and Trend Detection using Fast Fourier Transform in Box-Jenkins Algorithm. 2020 IEEE Canadian Conference on Electrical and Computer Engineering (CCECE), 1–5. https://doi.org/10.1109/CCECE47787.2020.9255819
+5. Musbah, H., & El-Hawary, M. (2019). SARIMA Model Forecasting of Short-Term Electrical Load Data Augmented by Fast Fourier Transform Seasonality Detection. 2019 IEEE Canadian Conference of Electrical and Computer Engineering (CCECE), 1–4. https://doi.org/10.1109/CCECE.2019.8861542
+
