@@ -24,3 +24,8 @@ __pycache__/
 
 # Linux trash directories
 .Trash-*/
+
+# Quarto rendered files and cache
+analysis/**/*_cache/
+analysis/**/*_files/
+analysis/**/*.html
