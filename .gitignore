@@ -29,3 +29,6 @@ __pycache__/
 analysis/**/*_cache/
 analysis/**/*_files/
 analysis/**/*.html
+
+# R env files
+.Renviron
