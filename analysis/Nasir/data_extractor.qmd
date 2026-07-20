@@ -99,10 +99,10 @@ fetch_presc_data <- function(
 ) {
     df <- get_normalised_prescribing(
         con = conn,
+        bnf_codes = code,
         start_date = start,
         end_date = end
       ) |>
-      filter(str_like(bnf_code, code)) |>
       select(-net_cost, -actual_cost)
     
     if (display_query) {
