@@ -1,1 +1,60 @@
-#project name
+---
+title: "Seasonality in tbc"
+author: "Najma Moallin"
+format: html
+---
+
+```{r}
+#| label: setup
+library(opr)
+library(tidyverse)
+library(scales)
+library(gt)
+library(here)
+library(arrow)
+
+#| label: connect
+con <- connect_bq()
+```
+
+```{r}
+#| label: extract-data
+#| eval: true
+#| cache: true
+bnf_code_amoxicillin <- "0501013B0%"
+
+df_prescribing <- get_normalised_prescribing(
+  con,
+  bnf_codes = bnf_code_amoxicillin,
+  start_date = "2024-03-01",
+  end_date = "2024-04-30"
+) |>
+  select(month, practice, bnf_code, bnf_name, items, quantity) |>
+  collect()
+
+df_practices <- get_practices(con, filter_setting = 4) |>
+  collect()
+
+write_parquet(
+  df_prescribing,
+  here("data-raw", "example", "df_amoxicillin_prescribing_032024.parquet")
+)
+
+write_parquet(
+  df_practices,
+  here("data-raw", "example", "najma_df_practices.parquet")
+)
+```
+
+
+```{r}
+#| label: load-data
+#| eval: false
+df_prescribing <- read_parquet(
+  here("data-raw", "example", "df_amoxicillin_prescribing_032024.parquet")
+)
+
+df_practices <- read_parquet(
+  here("data-raw", "example", "najma_df_practices.parquet")
+)
+```
