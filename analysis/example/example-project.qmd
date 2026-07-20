@@ -1,0 +1,211 @@
+---
+title: "Example project"
+format: html
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+## Background
+
+This study aims to determine whether the sertraline (BNF codes [`0403030Q0`](https://openprescribing.net/chemical/0403030Q0/)) prescription activity for GP practices in England shows seasonality and whether this seasonality differs across geographical regions.
+
+## Setup
+
+The [`opr` package website](https://bennettoxford.github.io/opr/) explains how to install the package and set up database access.
+This analysis is written as a Quarto document.
+If Quarto is new to you, the [Quarto guide](https://quarto.org/docs/guide/) is a good place to start.
+
+```{r}
+#| label: setup
+library(opr)
+library(tidyverse)
+library(scales)
+library(gt)
+library(here)
+library(arrow)
+```
+
+## Connect
+
+The OpenPrescribing data lives in [Google BigQuery](https://cloud.google.com/bigquery).
+We can connect to it like this:
+
+```{r}
+#| label: connect
+con <- connect_bq()
+```
+
+## Explore
+
+The `get_*()` functions don't download any data straight away.
+They build a query that runs in the database, and nothing is downloaded until you call `collect()`.
+This means you can preview and refine a query before pulling the results into R.
+For example, preview standard GP practices:
+
+```{r}
+#| label: explore-practices
+get_practices(con, filter_setting = 4, add_setting_labels = TRUE)
+```
+
+The `bnf` table shows which BNF codes belong to sertraline:
+
+```{r}
+#| label: explore-bnf
+tbl(con, "bnf") |>
+  filter(str_detect(chemical, "Sertraline")) |>
+  distinct(chemical, chemical_code)
+```
+
+Add `%` to the end of the chemical code to match all sertraline products, so all the different doses and forms like tablets or oral solutions.
+
+## Extract
+
+Once you are happy with the data, save a copy with `arrow::write_parquet()` (or `write_csv()`) to `data-raw/example/` and commit it to GitHub (if the files aren't too large).
+After that you can work from the saved files instead of querying the database every time: set `eval: false` on the extract chunk below and `eval: true` on the load chunk.
+
+```{r}
+#| label: extract-data
+#| eval: true
+#| cache: true
+bnf_code_sertraline <- "0403030Q0%"
+
+df_prescribing <- get_normalised_prescribing(
+  con,
+  bnf_codes = bnf_code_sertraline,
+  start_date = "2022-01-01",
+  end_date = "2024-12-01"
+) |>
+  select(month, practice, bnf_code, bnf_name, items, quantity) |>
+  collect()
+
+df_practices <- get_practices(con, filter_setting = 4) |>
+  collect()
+
+write_parquet(
+  df_prescribing,
+  here("data-raw", "example", "df_prescribing.parquet")
+)
+
+write_parquet(
+  df_practices,
+  here("data-raw", "example", "df_practices.parquet")
+)
+```
+
+```{r}
+#| label: load-data
+#| eval: false
+df_prescribing <- read_parquet(
+  here("data-raw", "example", "df_prescribing.parquet")
+)
+
+df_practices <- read_parquet(
+  here("data-raw", "example", "df_practices.parquet")
+)
+```
+
+## Analyse
+
+First, add up the items prescribed across England for each month:
+
+```{r}
+#| label: get-monthly-items
+df_monthly_items <- df_prescribing |>
+  group_by(month) |>
+  summarise(items = sum(items)) |>
+  arrange(month)
+
+df_monthly_items
+```
+
+### Figure
+
+```{r}
+#| label: fig-monthly-items
+#| fig-cap: "Monthly count of prescribed sertraline items, 2022-2024."
+#| fig-height: 4
+#| fig-width: 8
+fig_monthly_items <- df_monthly_items |>
+  ggplot(aes(x = month, y = items)) +
+  geom_line(alpha = 0.4) +
+  geom_point(size = .8) +
+  scale_x_date(
+    labels = label_date("%b\n%Y"),
+    date_minor_breaks = "1 month",
+    guide = guide_axis(minor.ticks = TRUE)
+  ) +
+  scale_y_continuous(labels = label_comma(), limits = c(0, NA)) +
+  labs(x = NULL, y = "Items")
+
+fig_monthly_items
+
+ggsave(
+  filename = here("outputs", "example", "figures", "fig_monthly_items.png"),
+  fig_monthly_items,
+  height = 4,
+  width = 8
+)
+```
+
+We can also plot one line for each BNF code to compare the different sertraline products:
+
+```{r}
+#| label: fig-monthly-items-bnf
+#| fig-cap: "Monthly count of prescribed sertraline items by BNF code, 2022-2024."
+#| fig-height: 6
+#| fig-width: 8
+fig_monthly_items_bnf <- df_prescribing |>
+  group_by(month, bnf_name) |>
+  summarise(items = sum(items)) |>
+  ggplot(aes(x = month, y = items, colour = bnf_name)) +
+  geom_line(alpha = 0.4) +
+  geom_point(size = .8) +
+  scale_x_date(
+    labels = label_date("%b\n%Y"),
+    date_minor_breaks = "1 month",
+    guide = guide_axis(minor.ticks = TRUE)
+  ) +
+  scale_y_continuous(labels = label_comma(), limits = c(0, NA)) +
+  labs(x = NULL, y = "Items", colour = NULL) +
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(size = 7)
+  ) +
+  guides(colour = guide_legend(ncol = 3))
+
+fig_monthly_items_bnf
+
+ggsave(
+  filename = here("outputs", "example", "figures", "fig_monthly_items_bnf.png"),
+  fig_monthly_items_bnf,
+  height = 6,
+  width = 8
+)
+```
+
+### Table
+
+```{r}
+#| label: tbl-annual-items
+#| tbl-cap: "Annual count of prescribed sertraline items, 2022-2024."
+tab_annual_items <- df_monthly_items |>
+  group_by(year = year(month)) |>
+  summarise(items = sum(items)) |>
+  gt() |>
+  cols_label(
+    year = "Year",
+    items = "Items"
+  ) |>
+  fmt_number(columns = items, decimals = 0) |>
+  tab_header(title = "Annual sertraline prescribing") |>
+  tab_source_note(paste("BNF code:", bnf_code_sertraline))
+
+gtsave(
+  tab_annual_items,
+  here("outputs", "example", "tables", "tab_annual_items.png")
+)
+
+tab_annual_items
+```
