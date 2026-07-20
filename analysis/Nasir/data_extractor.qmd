@@ -20,7 +20,8 @@ format:
 # Setup
 Load packages and set up variables for BNF codes and data date range (May 2016 to April 2026).
 
-```{r setup}
+```{r}
+#| label: setup
 #| warning: false
 
 library(opr)
@@ -30,7 +31,9 @@ library(gt)
 ```
 
 
-```{r variables}
+```{r}
+#| label: variables
+
 BNF_ANTIDEPRESSANTS <- "0403%"
 BNF_ANTIHISTAMINES <- "030401%"
 BNF_NORETHISTERONE <- "0604012P0"
@@ -48,6 +51,7 @@ DATE_END <- "2016-06-01"
 ```{r}
 #| label: tbl-bnf-codes
 #| tbl-cap: BNF codes for the drugs/drug groups used in this study
+#| code-fold: true
 
 codes <- c(
   "0403*******", "030401*****",
@@ -74,14 +78,18 @@ data.frame(
 
 Connect to BigQuery see [here](https://bennettoxford.github.io/opr/articles/opr.html#connect).
 
-```{r bq-connect}
+```{r}
+#| label: bq-connect
+#| output: false
+
 CONN <- connect_bq()
 ```
 
 # Fetch data
 Query the `normalised_prescribing` table to fetch the data for the BNF codes. The function below takes the connection object and either display the query or collect the data, based on the `display_query` argument:
 
-```{r fetch-func}
+```{r}
+#| label: fetch-function
 fetch_presc_data <- function(
   conn,
   code,
@@ -108,7 +116,9 @@ fetch_presc_data <- function(
 ## Antidepressants
 Fetch the data for antidepressants.
 
-```{r antidepressants1}
+```{r}
+#| label: antidepressants
+
 df_antidepressants <- fetch_presc_data(
   CONN,
   BNF_ANTIDEPRESSANTS,
@@ -125,7 +135,8 @@ gt(head(df_antidepressants, 10))
 ```
 
 Writing to a parquet file.
-```{r save-antidepressants}
+```{r}
+#| label: save-antidepressants
 #| eval: false
 
 write_parquet(
@@ -135,7 +146,9 @@ write_parquet(
 ```
 
 ## Antihistamines
-```{r antihistamines}
+```{r}
+#| label: antihistamines
+
 df_antihistamines <- fetch_presc_data(
   CONN,
   BNF_ANTIHISTAMINES,
@@ -145,7 +158,8 @@ df_antihistamines <- fetch_presc_data(
 )
 ```
 
-```{r save-antihistamines}
+```{r}
+#| label: save-antihistamines
 #| eval: false
 
 write_parquet(
@@ -155,7 +169,9 @@ write_parquet(
 ```
 
 ## Depot Antipsychotics
-```{r antipsychotics}
+```{r}
+#| label: antipsychotics
+
 df_antipsychotics <- fetch_presc_data(
   CONN,
   BNF_ANTIPSYCHOTICS,
@@ -165,7 +181,8 @@ df_antipsychotics <- fetch_presc_data(
 )
 ```
 
-```{r save-antipsychotics}
+```{r}
+#| label:  save-antipsychotics
 #| eval: false
 
 write_parquet(
@@ -175,7 +192,9 @@ write_parquet(
 ```
 
 ## Norethisterone
-```{r norethisterone}
+```{r}
+#| label: norethisterone
+
 df_norethisterone <- fetch_presc_data(
   CONN,
   BNF_NORETHISTERONE,
@@ -185,7 +204,8 @@ df_norethisterone <- fetch_presc_data(
 )
 ```
 
-```{r save-norethisterone}
+```{r}
+#| label: save-norethisterone
 #| eval: false
 
 write_parquet(
