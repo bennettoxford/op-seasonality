@@ -3,13 +3,12 @@ author: Nasir Abdulrasheed
 title: Data Extraction for OpenPrescribing Seasonality
 execute: 
   echo: true
-format: 
+format:
   html: 
     toc: true
     colorlinks: true
     number-sections: true
     fig-pos: H
-    fig-align: center
     smooth-scroll: true
     respect-user-color-scheme: true
     theme:
@@ -20,12 +19,16 @@ format:
 # Setup
 Load packages and set up variables for BNF codes and data date range (May 2016 to April 2026).
 
+::: {.callout-warning}
+Before running the notebook for data fetching, kindly check the dates and BNF codes to ensure you are not wasting BigQuery resources.
+:::
+
 ```{r}
 #| label: setup
 #| warning: false
 
 library(opr)
-library(tidyverse)
+library(dplyr)
 library(arrow)
 library(gt)
 ```
@@ -39,9 +42,8 @@ BNF_ANTIHISTAMINES <- "030401%"
 BNF_NORETHISTERONE <- "0604012P0%"
 BNF_ANTIPSYCHOTICS <- "040202%"
 
-# these are test dates
-DATE_START <- "2016-04-01"
-DATE_END <- "2016-06-01"
+DATE_START <- "2016-05-01"
+DATE_END <- "2026-04-01"
 ```
 
 # Drug definition
@@ -76,7 +78,7 @@ data.frame(
 ```
 
 
-Connect to BigQuery see [here](https://bennettoxford.github.io/opr/articles/opr.html#connect).
+Connect to BigQuery. See [here](https://bennettoxford.github.io/opr/articles/opr.html#connect).
 
 ```{r}
 #| label: bq-connect
@@ -90,6 +92,7 @@ Query the `normalised_prescribing` table to fetch the data for the BNF codes. Th
 
 ```{r}
 #| label: fetch-function
+
 fetch_presc_data <- function(
   conn,
   code,
@@ -113,6 +116,19 @@ fetch_presc_data <- function(
 }
 ```
 
+This emits the query for fetching the antidepressants data as an example:
+```{r}
+#| label: sql-query
+
+fetch_presc_data(
+  CONN,
+  BNF_ANTIDEPRESSANTS,
+  DATE_START,
+  DATE_END,
+  display_query = TRUE
+)
+```
+
 ## Antidepressants
 Fetch the data for antidepressants.
 
@@ -124,20 +140,20 @@ df_antidepressants <- fetch_presc_data(
   BNF_ANTIDEPRESSANTS,
   DATE_START,
   DATE_END,
-  display_query = TRUE
+  display_query = FALSE
 )
 ```
 
 ```{r}
-#| eval: false
+#| label: tbl-antidepressants
+#| code-fold: true
 
-gt(head(df_antidepressants, 10))
+gt(head(df_antidepressants, 5))
 ```
 
 Writing to a parquet file.
 ```{r}
 #| label: save-antidepressants
-#| eval: false
 
 write_parquet(
   df_antidepressants,
@@ -154,13 +170,19 @@ df_antihistamines <- fetch_presc_data(
   BNF_ANTIHISTAMINES,
   DATE_START,
   DATE_END,
-  display_query = TRUE
+  display_query = FALSE
 )
 ```
 
 ```{r}
+#| label: tbl-antihistamines
+#| code-fold: true
+
+gt(head(df_antihistamines, 5))
+```
+
+```{r}
 #| label: save-antihistamines
-#| eval: false
 
 write_parquet(
   df_antihistamines,
@@ -177,13 +199,19 @@ df_antipsychotics <- fetch_presc_data(
   BNF_ANTIPSYCHOTICS,
   DATE_START,
   DATE_END,
-  display_query = TRUE
+  display_query = FALSE
 )
 ```
 
 ```{r}
+#| label: tbl-antipsychotics
+#| code-fold: true
+
+gt(head(df_antipsychotics, 5))
+```
+
+```{r}
 #| label:  save-antipsychotics
-#| eval: false
 
 write_parquet(
   df_antipsychotics,
@@ -200,13 +228,19 @@ df_norethisterone <- fetch_presc_data(
   BNF_NORETHISTERONE,
   DATE_START,
   DATE_END,
-  display_query = TRUE
+  display_query = FALSE
 )
 ```
 
 ```{r}
+#| label: tbl-norethisterone
+#| code-fold: true
+
+gt(head(df_norethisterone, 5))
+```
+
+```{r}
 #| label: save-norethisterone
-#| eval: false
 
 write_parquet(
   df_norethisterone,
