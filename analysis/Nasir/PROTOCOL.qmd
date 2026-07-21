@@ -61,15 +61,15 @@ The group of drugs used in this study are grouped under the following codelists:
 
 1. Antidepressants (BNF codes: 0403*********)
 2. Antihistamines (BNF codes: 030401**********)
-3. Norethisterone (0604012P0)
-4. Antipsychotic depot injections (040202******)
+3. Norethisterone (BNF codes: 0604012P0****)
+4. Antipsychotic depot injections (BNF codes: 040202******)
 
 
 ## Study Measures
 We will use GP data from OpenPrescribing to extract monthly data for the following measures:
 
 1. Total monthly quantity of the drugs under consideration
-2. Monthly items per working days (This is to eliminate potentially spurious time series signals due to significant difference in number of working days among months in the data).
+2. Monthly items per working day (This is to eliminate potentially spurious time series signals due to significant difference in number of working days among months in the data).
 
 ### Covariates
 The above described measures will be stratified by the following:
@@ -79,8 +79,9 @@ The above described measures will be stratified by the following:
 ### Sensitivity Analyses
 Proposed sensitivity analyses include:
 
-1. Examining the robustness of the pipeline to disruptive events such as the COVID-19 pandemic.
-2. Examining how the pipeline performs with various hyperparameter values for different steps in the pipeline
+1. Examining the difference in pipeline outputs when using the monthly total items series versus using the monthly total items per working day series.
+2. Examining the robustness of the pipeline to disruptive events such as the COVID-19 pandemic.
+2. Examining how the pipeline performs with various hyperparameter values for different steps in the pipeline.
 
 
 ## Statistical Analysis
