@@ -12,11 +12,13 @@ library(scales)
 library(gt)
 library(here)
 library(arrow)
-
-#| label: connect
-con <- connect_bq()
 ```
 
+```{r}
+#| label: connect
+con <- connect_bq()
+
+```
 ```{r}
 #| label: extract-data
 #| eval: true
@@ -37,12 +39,12 @@ df_practices <- get_practices(con, filter_setting = 4) |>
 
 write_parquet(
   df_prescribing,
-  here("data-raw", "example", "df_amoxicillin_prescribing_032024.parquet")
+  here("data-raw", "najma", "df_amoxicillin_prescribing_032024.parquet")
 )
 
 write_parquet(
   df_practices,
-  here("data-raw", "example", "najma_df_practices.parquet")
+  here("data-raw", "najma", "df_practices.parquet")
 )
 ```
 
@@ -51,10 +53,10 @@ write_parquet(
 #| label: load-data
 #| eval: false
 df_prescribing <- read_parquet(
-  here("data-raw", "example", "df_amoxicillin_prescribing_032024.parquet")
+  here("data-raw", "najma", "df_amoxicillin_prescribing_032024.parquet")
 )
 
 df_practices <- read_parquet(
-  here("data-raw", "example", "najma_df_practices.parquet")
+  here("data-raw", "najma", "df_practices.parquet")
 )
 ```
