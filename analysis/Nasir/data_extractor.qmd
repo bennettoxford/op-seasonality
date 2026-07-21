@@ -1,0 +1,249 @@
+---
+author: Nasir Abdulrasheed
+title: Data Extraction for OpenPrescribing Seasonality
+execute: 
+  echo: true
+format:
+  html: 
+    toc: true
+    colorlinks: true
+    number-sections: true
+    fig-pos: H
+    smooth-scroll: true
+    respect-user-color-scheme: true
+    theme:
+     light: litera
+     dark: cyborg
+---
+
+# Setup
+Load packages and set up variables for BNF codes and data date range (May 2016 to April 2026).
+
+::: {.callout-warning}
+Before running the notebook for data fetching, kindly check the dates and BNF codes to ensure you are not wasting BigQuery resources.
+:::
+
+```{r}
+#| label: setup
+#| warning: false
+
+library(opr)
+library(dplyr)
+library(arrow)
+library(gt)
+```
+
+
+```{r}
+#| label: variables
+
+BNF_ANTIDEPRESSANTS <- "0403%"
+BNF_ANTIHISTAMINES <- "030401%"
+BNF_NORETHISTERONE <- "0604012P0%"
+BNF_ANTIPSYCHOTICS <- "040202%"
+
+DATE_START <- "2016-05-01"
+DATE_END <- "2026-04-01"
+```
+
+# Drug definition
+
+@tbl-bnf-codes shows the list of chemicals and sections whose data will be extracted for this study.
+
+```{r}
+#| label: tbl-bnf-codes
+#| tbl-cap: BNF codes for the drugs/drug groups used in this study
+#| code-fold: true
+
+codes <- c(
+  "0403*******", "030401*****",
+  "0604012P0", "040202*****"
+)
+drug_names <- c(
+  "Antidepressants", "Antihistamines",
+  "Norethisterone", "Depot Antipsychotics"
+)
+
+data.frame(
+  `Chemical/Section Name` = drug_names,
+  `BNF Code` = codes,
+  check.names = FALSE
+) |>
+  gt() |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_column_labels(everything())
+  )
+
+```
+
+
+Connect to BigQuery. See [here](https://bennettoxford.github.io/opr/articles/opr.html#connect).
+
+```{r}
+#| label: bq-connect
+#| output: false
+
+CONN <- connect_bq()
+```
+
+# Fetch data
+Query the `normalised_prescribing` table to fetch the data for the BNF codes. The function below takes the connection object and either display the query or collect the data, based on the `display_query` argument:
+
+```{r}
+#| label: fetch-function
+
+fetch_presc_data <- function(
+  conn,
+  code,
+  start,
+  end,
+  display_query = FALSE
+) {
+    df <- get_normalised_prescribing(
+        con = conn,
+        bnf_codes = code,
+        start_date = start,
+        end_date = end
+      ) |>
+      select(-net_cost, -actual_cost)
+    
+    if (display_query) {
+      show_query(df)
+    } else {
+      collect(df)
+    }
+}
+```
+
+This emits the query for fetching the antidepressants data as an example:
+```{r}
+#| label: sql-query
+
+fetch_presc_data(
+  CONN,
+  BNF_ANTIDEPRESSANTS,
+  DATE_START,
+  DATE_END,
+  display_query = TRUE
+)
+```
+
+## Antidepressants
+Fetch the data for antidepressants.
+
+```{r}
+#| label: antidepressants
+
+df_antidepressants <- fetch_presc_data(
+  CONN,
+  BNF_ANTIDEPRESSANTS,
+  DATE_START,
+  DATE_END,
+  display_query = FALSE
+)
+```
+
+```{r}
+#| label: tbl-antidepressants
+#| code-fold: true
+
+gt(head(df_antidepressants, 5))
+```
+
+Writing to a parquet file.
+```{r}
+#| label: save-antidepressants
+
+write_parquet(
+  df_antidepressants,
+  "data/presc_antidepressants.parquet"
+)
+```
+
+## Antihistamines
+```{r}
+#| label: antihistamines
+
+df_antihistamines <- fetch_presc_data(
+  CONN,
+  BNF_ANTIHISTAMINES,
+  DATE_START,
+  DATE_END,
+  display_query = FALSE
+)
+```
+
+```{r}
+#| label: tbl-antihistamines
+#| code-fold: true
+
+gt(head(df_antihistamines, 5))
+```
+
+```{r}
+#| label: save-antihistamines
+
+write_parquet(
+  df_antihistamines,
+  "data/presc_antihistamines.parquet"
+)
+```
+
+## Depot Antipsychotics
+```{r}
+#| label: antipsychotics
+
+df_antipsychotics <- fetch_presc_data(
+  CONN,
+  BNF_ANTIPSYCHOTICS,
+  DATE_START,
+  DATE_END,
+  display_query = FALSE
+)
+```
+
+```{r}
+#| label: tbl-antipsychotics
+#| code-fold: true
+
+gt(head(df_antipsychotics, 5))
+```
+
+```{r}
+#| label:  save-antipsychotics
+
+write_parquet(
+  df_antipsychotics,
+  "data/presc_antipsychotics.parquet"
+)
+```
+
+## Norethisterone
+```{r}
+#| label: norethisterone
+
+df_norethisterone <- fetch_presc_data(
+  CONN,
+  BNF_NORETHISTERONE,
+  DATE_START,
+  DATE_END,
+  display_query = FALSE
+)
+```
+
+```{r}
+#| label: tbl-norethisterone
+#| code-fold: true
+
+gt(head(df_norethisterone, 5))
+```
+
+```{r}
+#| label: save-norethisterone
+
+write_parquet(
+  df_norethisterone,
+  "data/presc_norethisterone.parquet"
+)
+```
