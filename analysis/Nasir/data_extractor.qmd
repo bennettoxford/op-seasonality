@@ -42,6 +42,12 @@ BNF_ANTIHISTAMINES <- "030401%"
 BNF_NORETHISTERONE <- "0604012P0%"
 BNF_ANTIPSYCHOTICS <- "040202%"
 
+# test set of 4 drugs
+SERTRALINE_HCL <- "0403030Q0%"
+ESCITALOPRAM <- "0403030X0%"
+LORATADINE <- "0304010D0%"
+FEXOFENADINE_HCL <- "0304010E0%"
+
 DATE_START <- "2016-05-01"
 DATE_END <- "2016-06-01"
 ```
@@ -93,33 +99,32 @@ Query the `normalised_prescribing` table to fetch the data for the BNF codes. Th
 ```{r}
 #| label: fetch-functions
 
-fetch_presc_data <- function(
-  conn,
-  code,
-  start,
-  end,
-  display_query = TRUE
-) {
-    df <- get_normalised_prescribing(
-        con = conn,
-        bnf_codes = code,
-        start_date = start,
-        end_date = end
-      ) |>
+fetch_presc_data <- function(code, display_query = TRUE) {
+  df <- get_normalised_prescribing(
+      con = CONN,
+      bnf_codes = code,
+      start_date = DATE_START,
+      end_date = DATE_END
+    ) |>
       select(-net_cost, -actual_cost)
-    
-    if (display_query) {
-      show_query(df)
-    } else {
-      collect(df)
-    }
+
+  if (display_query) {
+    show_query(df)
+  } else {
+    collect(df)
+  }
 }
 
 # fetches given products details from the bnf table
 fetch_bnf_codes <- function(bnf_codes, display_query = TRUE) {
   df <- tbl(CONN, "bnf") |>
     filter(presentation_code %in% bnf_codes) |>
-    select(-ends_with("_code"), presentation_code)
+    select(
+      -ends_with("_code"),
+      -presentation,
+      chemical_code,
+      presentation_code
+    )
 
   if (display_query) {
     show_query(df)
@@ -134,12 +139,76 @@ This emits the query for fetching the antidepressants data as an example:
 #| label: sql-fetch-presc
 
 fetch_presc_data(
-  CONN,
   BNF_ANTIDEPRESSANTS,
-  DATE_START,
-  DATE_END,
   display_query = TRUE
 )
+```
+
+## Test drugs
+The data for the four drugs/chemicals in @tbl-dev-codes will be used in developing the pipeline in the first instance, while other groups will brought into the picture as development matures.
+
+```{r}
+#| label: tbl-dev-codes
+#| tbl-cap: Test drugs for initial pipeline development
+
+codes <- c(
+  "0403030Q0%", "0403030X0%",
+  "0304010D0%", "0304010E0%"
+)
+drug_names <- c(
+  "Sertraline", "Escitalopram",
+  "Loratadine", "Fexofenadine"
+)
+
+data.frame(
+  `Chemical Name` = drug_names,
+  `BNF Code` = codes,
+  check.names = FALSE
+) |>
+  gt() |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_column_labels(everything())
+  )
+
+```
+
+```{r}
+#| label: sql-dev-codes
+
+dev_codes <- c(SERTRALINE_HCL, ESCITALOPRAM, FEXOFENADINE_HCL, LORATADINE)
+fetch_presc_data(dev_codes, display_query = TRUE)
+```
+
+```{r}
+#| label: tbl-dev-presc
+#| tbl-cap: Data for Sertraline, Escitalopram, Loratadine, and fexofenadine
+#| code-fold: true
+
+df_dev_drugs <- fetch_presc_data(dev_codes, display_query = FALSE)
+
+write_parquet(
+  df_dev_drugs,
+  paste0("data/dev_drugs_", DATE_START, "_",  DATE_END, ".parquet")
+)
+
+head(df_dev_drugs, 5) |> gt()
+```
+
+```{r}
+#| label: tbl-bnf-dev
+#| tbl-cap: BNF details for  Sertraline, Escitalopram, Loratadine, and fexofenadine
+#| code-fold: true
+
+df_bnf_dev <- unique(df_dev_drugs$bnf_code) |>
+  fetch_bnf_codes(display_query = FALSE)
+
+write_parquet(
+  df_bnf_dev,
+  paste0("data/bnf_dev_", DATE_START, "_",  DATE_END, ".parquet")
+)
+
+head(df_bnf_dev, 5) |> gt()
 ```
 
 ## Antidepressants
@@ -147,12 +216,10 @@ Fetch the data for antidepressants.
 
 ```{r}
 #| label: antidepressants
+#| eval: false
 
 df_antidepressants <- fetch_presc_data(
-  CONN,
   BNF_ANTIDEPRESSANTS,
-  DATE_START,
-  DATE_END,
   display_query = FALSE
 )
 ```
@@ -160,6 +227,7 @@ df_antidepressants <- fetch_presc_data(
 ```{r}
 #| label: tbl-antidepressants
 #| code-fold: true
+#| eval: false
 
 gt(head(df_antidepressants, 5))
 ```
@@ -167,6 +235,7 @@ gt(head(df_antidepressants, 5))
 Writing to a parquet file.
 ```{r}
 #| label: save-antidepressants
+#| eval: false
 
 write_parquet(
   df_antidepressants,
@@ -177,12 +246,10 @@ write_parquet(
 ## Antihistamines
 ```{r}
 #| label: antihistamines
+#| eval: false
 
 df_antihistamines <- fetch_presc_data(
-  CONN,
   BNF_ANTIHISTAMINES,
-  DATE_START,
-  DATE_END,
   display_query = FALSE
 )
 ```
@@ -190,12 +257,14 @@ df_antihistamines <- fetch_presc_data(
 ```{r}
 #| label: tbl-antihistamines
 #| code-fold: true
+#| eval: false
 
 gt(head(df_antihistamines, 5))
 ```
 
 ```{r}
 #| label: save-antihistamines
+#| eval: false
 
 write_parquet(
   df_antihistamines,
@@ -206,12 +275,10 @@ write_parquet(
 ## Depot Antipsychotics
 ```{r}
 #| label: antipsychotics
+#| eval: false
 
 df_antipsychotics <- fetch_presc_data(
-  CONN,
   BNF_ANTIPSYCHOTICS,
-  DATE_START,
-  DATE_END,
   display_query = FALSE
 )
 ```
@@ -219,12 +286,14 @@ df_antipsychotics <- fetch_presc_data(
 ```{r}
 #| label: tbl-antipsychotics
 #| code-fold: true
+#| eval: false
 
 gt(head(df_antipsychotics, 5))
 ```
 
 ```{r}
 #| label:  save-antipsychotics
+#| eval: false
 
 write_parquet(
   df_antipsychotics,
@@ -235,12 +304,10 @@ write_parquet(
 ## Norethisterone
 ```{r}
 #| label: norethisterone
+#| eval: false
 
 df_norethisterone <- fetch_presc_data(
-  CONN,
   BNF_NORETHISTERONE,
-  DATE_START,
-  DATE_END,
   display_query = FALSE
 )
 ```
@@ -248,12 +315,14 @@ df_norethisterone <- fetch_presc_data(
 ```{r}
 #| label: tbl-norethisterone
 #| code-fold: true
+#| eval: false
 
 gt(head(df_norethisterone, 5))
 ```
 
 ```{r}
 #| label: save-norethisterone
+#| eval: false
 
 write_parquet(
   df_norethisterone,
@@ -266,6 +335,7 @@ write_parquet(
 Fetch details (mostly names) of each medicinal product/presentations included in all the data extracted:
 ```{r}
 #| label: sql-fetch-bnf-codes
+#| eval: false
 
 c(
   df_antidepressants$bnf_code,
@@ -281,6 +351,7 @@ c(
 #| label: tbl-bnf-codes
 #| tbl-cap: BNF details of drugs in the fetched data
 #| code-fold: true
+#| eval: false
 
 df_bnf_codes <- c(
     df_antidepressants$bnf_code,
@@ -307,8 +378,7 @@ Fetch all NHS regions for likely sensitivity analysis later on:
 #| tbl-cap: All NHSE commissioning regions
 #| code-fold: true
 
-df_regions <- tbl(CONN, "regional_teams") |>
-  collect()
+df_regions <- tbl(CONN, "regional_teams") |> collect()
 
 write_parquet(df_regions, paste0("data/regional_teams.parquet"))
 
