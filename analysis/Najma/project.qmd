@@ -59,6 +59,9 @@ collect()
 df_practices <- get_practices(con, filter_setting = 4) |>
   collect()
 
+df_regional_teams <- tbl(con, "regional_teams") |>
+  collect()
+
 
 write_parquet(
   df_prescribing,
@@ -68,6 +71,11 @@ write_parquet(
 write_parquet(
   df_practices,
   here("data-raw", "najma", "df_practices.parquet")
+)
+
+write_parquet(
+  df_regional_teams,
+  here("data-raw", "najma", "df_regional_teams.parquet")
 )
 ```
 
@@ -81,5 +89,9 @@ df_prescribing <- read_parquet(
 
 df_practices <- read_parquet(
   here("data-raw", "najma", "df_practices.parquet")
+)
+
+df_regional_teams <- read_parquet(
+  here("data-raw", "najma", "df_regional_teams.parquet")
 )
 ```
