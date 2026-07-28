@@ -90,35 +90,6 @@ write_parquet(
 ```
 
 ```{r}
-#| label: normalise-data
-#| eval: true
-#| cache: true
-
-df_prescribing_normalised <- df_prescribing |>
-  left_join(df_list_size, by = c("practice", "month"))
-
-## compute practice-level rate
-## kept at practice level (not yet aggregated) so it can be joined
-## to a region lookup later for the regional variation extension
-df_prescribing_normalised <- df_prescribing_normalised |>
-  mutate(rate_per_1000 = items / total_list_size * 1000)
-
-## aggregate data (national level, for the primary seasonality analysis)
-
-df_monthly_items <- df_prescribing |>
-  group_by(month) |>
-  summarise(items = sum(items))
-
-df_monthly_patients <- df_list_size |>
-  group_by(month) |>
-  summarise(total_patients = sum(total_list_size))
-
-df_monthly_rate <- df_monthly_items |>
-  left_join(df_monthly_patients, by = "month") |>
-  mutate(rate_per_1000 = items / total_patients * 1000)
-```
-
-```{r}
 #| label: load-data
 #| eval: false
 df_prescribing <- read_parquet(
@@ -136,4 +107,31 @@ df_regional_teams <- read_parquet(
 df_list_size <- read_parquet(
   here("data-raw", "najma", "df_list_size.parquet")
 )
+```
+```{r}
+#| label: normalise-data
+#| eval: true
+#| cache: true
+
+df_prescribing_normalised <- df_prescribing |>
+  left_join(df_list_size, by = c("practice", "month"))
+
+## compute practice-level rate
+## kept at practice level (not yet aggregated) so it can be joined
+## to a region lookup later for the regional variation extension
+df_prescribing_normalised <- df_prescribing_normalised |>
+  mutate(rate_per_1000 = items / total_list_size * 1000)
+
+## aggregate data (national level, for the primary seasonality analysis)
+
+df_monthly_items <- df_prescribing |>
+  summarise(items = sum(items), .by = c(month, chemical))
+
+df_monthly_patients <- df_list_size |>
+  group_by(month) |>
+  summarise(total_patients = sum(total_list_size))
+
+df_monthly_rate <- df_monthly_items |>
+  left_join(df_monthly_patients, by = "month") |>
+  mutate(rate_per_1000 = items / total_patients * 1000)
 ```
