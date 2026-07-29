@@ -15,6 +15,7 @@ library(arrow)
 library(tsibble)
 library(feasts)
 library(ggrepel)
+library(patchwork)
 ```
 ```{r}
 #| label: connect
@@ -151,54 +152,62 @@ df_monthly_rate_tsibble <- df_monthly_rate |>
 
 drugs <- unique(df_monthly_rate_tsibble$chemical)
 
-## loop to create individual plots for 5 benchmark drugs
-
-save_figures <- FALSE  # will be set to true later
-
-purrr::walk(drugs, function(d) {
+## building list of plots instead of printing each one individually
+plot_list1 <- purrr::map(drugs, function(d) {
   
-  p <- df_monthly_rate_tsibble |>
+  df_monthly_rate_tsibble |>
     filter(chemical == d) |>
     gg_season(rate_per_1000, labels = "right", labels_repel = TRUE) +
     labs(
-      title = paste("Seasonal pattern:", d),
+      title = d,
       y = "Items per 1,000 registered patients",
       x = NULL
     )
-  
-  print(p)
-
-   if (save_figures) {
-    ggsave(
-      filename = here("outputs", "figures", paste0("gg_season_", d, ".png")),
-      plot = p, height = 4, width = 8
-    )
-  }
 })
+
+## combine all 5 into one figure
+combined_plot1 <- wrap_plots(plot_list, ncol = 2)
+
+combined_plot1
 ```
 
 ```{r}
 #| label: visualise-subseries
 #| eval: true
 
-purrr::walk(drugs, function(d) {
+## building list of plots instead of printing each one individually
+plot_list2 <- purrr::map(drugs, function(d) {
   
-  p <- df_monthly_rate_tsibble |>
+  df_monthly_rate_tsibble |>
     filter(chemical == d) |>
     gg_subseries(rate_per_1000) +
     labs(
-      title = paste("Subseries plot:", d),
+      title = d,
       y = "Items per 1,000 registered patients",
       x = NULL
     )
-  
-  print(p)
-
-  if (save_figures) {
-    ggsave(
-      filename = here("outputs", "figures", paste0("gg_subseries_", d, ".png")),
-      plot = p, height = 4, width = 8
-    )
-  }
 })
+
+combined_plot2 <- wrap_plots(plot_list2, ncol = 2)
+
+combined_plot2
+```
+
+```{r}
+#| label: save-graphs
+#| eval: false
+
+ggsave(
+    filename = here("outputs", "figures", "najma", "gg_season_all_benchmarks.png"),
+    plot = combined_plot1,
+    height = 10,
+    width = 10
+  )
+
+ggsave(
+    filename = here("outputs", "figures", "najma", "gg_subseries_all_benchmarks.png"),
+    plot = combined_plot2,
+    height = 12,
+    width = 10
+  )
 ```
