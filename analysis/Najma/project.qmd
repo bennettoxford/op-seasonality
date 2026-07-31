@@ -109,7 +109,6 @@ df_list_size <- read_parquet(
   here("data-raw", "najma", "df_list_size.parquet")
 )
 ```
-
 ```{r}
 #| label: normalise-data
 #| eval: true
@@ -188,7 +187,7 @@ plot_list2 <- purrr::map(drugs, function(d) {
     )
 })
 
-combined_plot2 <- wrap_plots(plot_list2, ncol = 2)
+combined_plot2 <- wrap_plots(plot_list2, ncol = 1)
 
 combined_plot2
 ```
@@ -207,7 +206,7 @@ ggsave(
 ggsave(
     filename = here("outputs", "figures", "najma", "gg_subseries_all_benchmarks.png"),
     plot = combined_plot2,
-    height = 12,
+    height = 20,
     width = 10
   )
 ```
