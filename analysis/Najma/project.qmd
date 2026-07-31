@@ -109,7 +109,6 @@ df_list_size <- read_parquet(
   here("data-raw", "najma", "df_list_size.parquet")
 )
 ```
-
 ```{r}
 #| label: normalise-data
 #| eval: true
