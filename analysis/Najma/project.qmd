@@ -247,21 +247,16 @@ plot_list2 <- purrr::map(drugs, function(d) {
       title = d,
       y = "Items per 1,000 registered patients",
       x = NULL
-    ) +
-    theme_minimal(base_size = 9) +
-    theme(
-      axis.text.x = element_text(angle = 90, size = 5),
-      strip.text = element_text(face = "bold", size = 7)
     )
 })
 names(plot_list2) <- drugs
 
 ## combine benchmark (expected seasonal) drugs into one figure
-combined_plot2_benchmark <- wrap_plots(plot_list2[benchmark_drugs], ncol = 2) +
+combined_plot2_benchmark <- wrap_plots(plot_list2[benchmark_drugs], ncol = 1) +
   plot_annotation(title = "Expected seasonal (benchmark drugs)")
 
 ## combine negative control (expected flat) drugs into one figure
-combined_plot2_negative <- wrap_plots(plot_list2[negative_controls], ncol = 2) +
+combined_plot2_negative <- wrap_plots(plot_list2[negative_controls], ncol = 1) +
   plot_annotation(title = "Expected minimal/no seasonality (negative controls)")
 
 combined_plot2_benchmark
@@ -289,14 +284,14 @@ ggsave(
 ggsave(
     filename = here("outputs", "figures", "najma", "gg_subseries_all_benchmarks.png"),
     plot = combined_plot2_benchmark,
-    height = 7,
+    height = 20,
     width = 10
   )
 
   ggsave(
     filename = here("outputs", "figures", "najma", "gg_subseries_all_negative.png"),
     plot = combined_plot2_negative,
-    height = 5,
-    width = 10
+    height = 8,
+    width = 9
   )
 ```
