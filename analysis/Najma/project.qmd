@@ -31,13 +31,21 @@ bnf_code_clarithromycin <- "0501050B0%"
 bnf_code_cetirizine <- "0304010I0%"
 bnf_code_fexofenadine <- "0304010E0%"
 
+## negative controls — drugs with expected minimal/no seasonality
+bnf_code_mesalazine <- "0105010B0%"
+bnf_code_tamoxifen <- "0803041S0%"
+bnf_code_finasteride <- "0604020C0%"
+
 df_prescribing <- get_normalised_prescribing(
   con,
   bnf_codes = c(bnf_code_amoxicillin,
   bnf_code_phenoxymethylpenicillin,
   bnf_code_clarithromycin,
   bnf_code_cetirizine,
-  bnf_code_fexofenadine),
+  bnf_code_fexofenadine,
+  bnf_code_mesalazine,
+  bnf_code_tamoxifen,
+  bnf_code_finasteride),
   start_date = "2015-01-01",
   end_date = "2025-12-31"
 ) |>
@@ -88,6 +96,50 @@ write_parquet(
 write_parquet(
   df_list_size,
   here("data-raw", "najma", "df_list_size.parquet")
+)
+```
+
+```{r}
+#| label: extract-negative-controls
+
+## to prevent extracting previous benchmarks again but redundant
+## if used code above
+
+
+bnf_code_mesalazine <- "0105010B0%"
+bnf_code_tamoxifen <- "0803041S0%"
+bnf_code_finasteride <- "0604020C0%"
+
+df_negative_controls <- get_normalised_prescribing(
+  con,
+  bnf_codes = c(bnf_code_mesalazine, bnf_code_tamoxifen, bnf_code_finasteride),
+  start_date = "2015-01-01",
+  end_date = "2025-12-31"
+) |>
+  select(
+    month,
+    practice,
+    regional_team,
+    items,
+    stp,
+    bnf_code,
+    bnf_name
+  )
+
+db_chemicals <- tbl(con, "bnf") |>
+  select(presentation_code, chemical)
+
+df_negative_controls <- df_negative_controls |>
+  inner_join(db_chemicals, by = c("bnf_code" = "presentation_code")) |>
+  collect()
+
+## append to the existing df_prescribing (already loaded from parquet)
+df_prescribing <- bind_rows(df_prescribing, df_negative_controls)
+
+## overwrite the saved parquet so it now includes all 8 drugs
+write_parquet(
+  df_prescribing,
+  here("data-raw", "najma", "df_prescribing.parquet")
 )
 ```
 ```{r}
@@ -151,6 +203,10 @@ df_monthly_rate_tsibble <- df_monthly_rate |>
 
 drugs <- unique(df_monthly_rate_tsibble$chemical)
 
+## split into expected-seasonal (benchmark) vs expected-flat (negative control) groups
+negative_controls <- c("Mesalazine (Systemic)", "Tamoxifen citrate", "Finasteride")
+benchmark_drugs <- setdiff(drugs, negative_controls)
+
 ## building list of plots instead of printing each one individually
 plot_list1 <- purrr::map(drugs, function(d) {
   
@@ -163,18 +219,25 @@ plot_list1 <- purrr::map(drugs, function(d) {
       x = NULL
     )
 })
+names(plot_list1) <- drugs
 
-## combine all 5 into one figure
-combined_plot1 <- wrap_plots(plot_list, ncol = 2)
+## combine benchmark (expected seasonal) drugs into one figure
+combined_plot1_benchmark <- wrap_plots(plot_list1[benchmark_drugs], ncol = 2) +
+  plot_annotation(title = "Expected seasonal (benchmark drugs)")
 
-combined_plot1
+## combine negative control (expected flat) drugs into one figure
+combined_plot1_negative <- wrap_plots(plot_list1[negative_controls], ncol = 2) +
+  plot_annotation(title = "Expected minimal/no seasonality (negative controls)")
+
+combined_plot1_benchmark
+combined_plot1_negative
 ```
 
 ```{r}
 #| label: visualise-subseries
 #| eval: true
 
-## building list of plots instead of printing each one individually
+## building list of subseries plots
 plot_list2 <- purrr::map(drugs, function(d) {
   
   df_monthly_rate_tsibble |>
@@ -184,12 +247,25 @@ plot_list2 <- purrr::map(drugs, function(d) {
       title = d,
       y = "Items per 1,000 registered patients",
       x = NULL
+    ) +
+    theme_minimal(base_size = 9) +
+    theme(
+      axis.text.x = element_text(angle = 90, size = 5),
+      strip.text = element_text(face = "bold", size = 7)
     )
 })
+names(plot_list2) <- drugs
 
-combined_plot2 <- wrap_plots(plot_list2, ncol = 1)
+## combine benchmark (expected seasonal) drugs into one figure
+combined_plot2_benchmark <- wrap_plots(plot_list2[benchmark_drugs], ncol = 2) +
+  plot_annotation(title = "Expected seasonal (benchmark drugs)")
 
-combined_plot2
+## combine negative control (expected flat) drugs into one figure
+combined_plot2_negative <- wrap_plots(plot_list2[negative_controls], ncol = 2) +
+  plot_annotation(title = "Expected minimal/no seasonality (negative controls)")
+
+combined_plot2_benchmark
+combined_plot2_negative
 ```
 
 ```{r}
@@ -198,15 +274,29 @@ combined_plot2
 
 ggsave(
     filename = here("outputs", "figures", "najma", "gg_season_all_benchmarks.png"),
-    plot = combined_plot1,
+    plot = combined_plot1_benchmark,
     height = 10,
     width = 10
   )
 
 ggsave(
+    filename = here("outputs", "figures", "najma", "gg_season_all_negative.png"),
+    plot = combined_plot1_negative,
+    height = 7,
+    width = 10
+  )
+
+ggsave(
     filename = here("outputs", "figures", "najma", "gg_subseries_all_benchmarks.png"),
-    plot = combined_plot2,
-    height = 20,
+    plot = combined_plot2_benchmark,
+    height = 7,
+    width = 10
+  )
+
+  ggsave(
+    filename = here("outputs", "figures", "najma", "gg_subseries_all_negative.png"),
+    plot = combined_plot2_negative,
+    height = 5,
     width = 10
   )
 ```
