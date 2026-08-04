@@ -25,6 +25,7 @@ con <- connect_bq()
 #| label: extract-data
 #| eval: false
 #| cache: true
+#| output: false
 bnf_code_amoxicillin <- "0501013B0%"
 bnf_code_phenoxymethylpenicillin <- "0501011P0%"
 bnf_code_clarithromycin <- "0501050B0%"
@@ -101,6 +102,8 @@ write_parquet(
 
 ```{r}
 #| label: extract-negative-controls
+#| output: false
+#| eval: false
 
 ## to prevent extracting previous benchmarks again but redundant
 ## if used code above
@@ -165,6 +168,7 @@ df_list_size <- read_parquet(
 #| label: normalise-data
 #| eval: true
 #| cache: true
+#| output: false
 
 df_prescribing_normalised <- df_prescribing |>
   left_join(df_list_size, by = c("practice", "month"))
@@ -197,6 +201,7 @@ df_monthly_rate <- df_monthly_rate |>
 ```{r}
 #| label: visualise-season
 #| eval: true
+#| output: false
 
 df_monthly_rate_tsibble <- df_monthly_rate |>
   as_tsibble(index = month, key = chemical)
@@ -236,6 +241,7 @@ combined_plot1_negative
 ```{r}
 #| label: visualise-subseries
 #| eval: true
+#| output: false
 
 ## building list of subseries plots
 plot_list2 <- purrr::map(drugs, function(d) {
@@ -266,6 +272,7 @@ combined_plot2_negative
 ```{r}
 #| label: save-graphs
 #| eval: false
+#| output: false
 
 ggsave(
     filename = here("outputs", "figures", "najma", "gg_season_all_benchmarks.png"),
@@ -293,5 +300,72 @@ ggsave(
     plot = combined_plot2_negative,
     height = 8,
     width = 9
+  )
+```
+
+```{r}
+#| label: compute-feat-stl
+#| eval: true
+#| output: true
+
+## compute seasonal/trend strength scores for all drugs at once
+df_feat_stl <- df_monthly_rate_tsibble |>
+  features(rate_per_1000, feat_stl)
+
+df_feat_stl
+```
+
+```{r}
+#| label: visualise-stl-decomposition
+#| eval: true
+#| output: false
+
+## STL for every drug at once
+df_stl_components <- df_monthly_rate_tsibble |>
+  model(STL(rate_per_1000 ~ season(window = "periodic"))) |>
+  components()
+
+## helper function to build decomposition plots for a given set of drugs
+build_stl_plots <- function(drug_names) {
+  purrr::map(drug_names, function(d) {
+    df_stl_components |>
+      filter(chemical == d) |>
+      autoplot() +
+      labs(title = d) +
+      theme_minimal(base_size = 8) +
+      theme(strip.text = element_text(size = 7))
+  }) |>
+    purrr::compact()
+}
+
+plot_list3_benchmark <- build_stl_plots(benchmark_drugs)
+plot_list3_negative <- build_stl_plots(negative_controls)
+
+combined_plot3_benchmark <- wrap_plots(plot_list3_benchmark, ncol = 1) +
+  plot_annotation(title = "STL decomposition — expected seasonal (benchmark drugs)")
+
+combined_plot3_negative <- wrap_plots(plot_list3_negative, ncol = 1) +
+  plot_annotation(title = "STL decomposition — expected minimal/no seasonality (negative controls)")
+
+combined_plot3_benchmark
+combined_plot3_negative
+```
+```{r}
+#| label: save-stl-graphs
+#| eval: false
+#| output: false
+
+ggsave(
+    filename = here("outputs", "figures", "najma", "feats_stl_all_benchmarks.png"),
+    plot = combined_plot3_benchmark,
+    height = 20,
+    width = 10
+  )
+
+  ggsave(
+    filename = here("outputs", "figures", "najma", "feasts_stl_all_negative.png"),
+    plot = combined_plot3_negative,
+    height = 12,
+    width = 10
   )
 ```
