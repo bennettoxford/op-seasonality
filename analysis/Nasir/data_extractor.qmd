@@ -64,12 +64,16 @@ DATE_END <- "2026-04-01"
 #| code-fold: true
 
 codes <- c(
-  "0403*******", "030401*****",
-  "0604012P0", "040202*****"
+  "0403*******",
+  "030401*****",
+  "0604012P0",
+  "040202*****"
 )
 drug_names <- c(
-  "Antidepressants", "Antihistamines",
-  "Norethisterone", "Depot Antipsychotics"
+  "Antidepressants",
+  "Antihistamines",
+  "Norethisterone",
+  "Depot Antipsychotics"
 )
 
 data.frame(
@@ -82,7 +86,6 @@ data.frame(
     style = cell_text(weight = "bold"),
     locations = cells_column_labels(everything())
   )
-
 ```
 
 
@@ -103,12 +106,12 @@ Query the `normalised_prescribing` table to fetch the data for the BNF codes. Th
 
 fetch_presc_data <- function(code, display_query = TRUE) {
   df <- get_normalised_prescribing(
-      con = CONN,
-      bnf_codes = code,
-      start_date = DATE_START,
-      end_date = DATE_END
-    ) |>
-      select(-net_cost, -actual_cost)
+    con = CONN,
+    bnf_codes = code,
+    start_date = DATE_START,
+    end_date = DATE_END
+  ) |>
+    select(-net_cost, -actual_cost)
 
   if (display_query) {
     show_query(df)
@@ -154,12 +157,16 @@ The data for the four drugs/chemicals in @tbl-dev-codes will be used in developi
 #| tbl-cap: Test drugs for initial pipeline development
 
 codes <- c(
-  "0403030Q0%", "0403030X0%",
-  "0304010D0%", "0304010E0%"
+  "0403030Q0%",
+  "0403030X0%",
+  "0304010D0%",
+  "0304010E0%"
 )
 drug_names <- c(
-  "Sertraline", "Escitalopram",
-  "Loratadine", "Fexofenadine"
+  "Sertraline",
+  "Escitalopram",
+  "Loratadine",
+  "Fexofenadine"
 )
 
 data.frame(
@@ -172,7 +179,6 @@ data.frame(
     style = cell_text(weight = "bold"),
     locations = cells_column_labels(everything())
   )
-
 ```
 
 ```{r}
@@ -362,13 +368,13 @@ c(
 #| eval: false
 
 df_bnf_codes <- c(
-    df_antidepressants$bnf_code,
-    df_antihistamines$bnf_code,
-    df_antipsychotics$bnf_code,
-    df_norethisterone$bnf_code
-  ) |>
-    unique() |>
-    fetch_bnf_codes(display_query = FALSE)
+  df_antidepressants$bnf_code,
+  df_antihistamines$bnf_code,
+  df_antipsychotics$bnf_code,
+  df_norethisterone$bnf_code
+) |>
+  unique() |>
+  fetch_bnf_codes(display_query = FALSE)
 
 save_file <- glue("df_bnf_codes_{DATE_START}_{DATE_END}.parquet")
 write_parquet(
