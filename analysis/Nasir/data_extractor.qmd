@@ -31,6 +31,8 @@ library(tidyverse)
 library(opr)
 library(arrow)
 library(gt)
+library(here)
+library(glue)
 ```
 
 
@@ -49,7 +51,7 @@ LORATADINE <- "0304010D0%"
 FEXOFENADINE_HCL <- "0304010E0%"
 
 DATE_START <- "2016-05-01"
-DATE_END <- "2016-06-01"
+DATE_END <- "2026-04-01"
 ```
 
 # Drug definition
@@ -62,12 +64,16 @@ DATE_END <- "2016-06-01"
 #| code-fold: true
 
 codes <- c(
-  "0403*******", "030401*****",
-  "0604012P0", "040202*****"
+  "0403*******",
+  "030401*****",
+  "0604012P0",
+  "040202*****"
 )
 drug_names <- c(
-  "Antidepressants", "Antihistamines",
-  "Norethisterone", "Depot Antipsychotics"
+  "Antidepressants",
+  "Antihistamines",
+  "Norethisterone",
+  "Depot Antipsychotics"
 )
 
 data.frame(
@@ -80,7 +86,6 @@ data.frame(
     style = cell_text(weight = "bold"),
     locations = cells_column_labels(everything())
   )
-
 ```
 
 
@@ -101,12 +106,12 @@ Query the `normalised_prescribing` table to fetch the data for the BNF codes. Th
 
 fetch_presc_data <- function(code, display_query = TRUE) {
   df <- get_normalised_prescribing(
-      con = CONN,
-      bnf_codes = code,
-      start_date = DATE_START,
-      end_date = DATE_END
-    ) |>
-      select(-net_cost, -actual_cost)
+    con = CONN,
+    bnf_codes = code,
+    start_date = DATE_START,
+    end_date = DATE_END
+  ) |>
+    select(-net_cost, -actual_cost)
 
   if (display_query) {
     show_query(df)
@@ -152,12 +157,16 @@ The data for the four drugs/chemicals in @tbl-dev-codes will be used in developi
 #| tbl-cap: Test drugs for initial pipeline development
 
 codes <- c(
-  "0403030Q0%", "0403030X0%",
-  "0304010D0%", "0304010E0%"
+  "0403030Q0%",
+  "0403030X0%",
+  "0304010D0%",
+  "0304010E0%"
 )
 drug_names <- c(
-  "Sertraline", "Escitalopram",
-  "Loratadine", "Fexofenadine"
+  "Sertraline",
+  "Escitalopram",
+  "Loratadine",
+  "Fexofenadine"
 )
 
 data.frame(
@@ -170,7 +179,6 @@ data.frame(
     style = cell_text(weight = "bold"),
     locations = cells_column_labels(everything())
   )
-
 ```
 
 ```{r}
@@ -187,9 +195,10 @@ fetch_presc_data(dev_codes, display_query = TRUE)
 
 df_dev_drugs <- fetch_presc_data(dev_codes, display_query = FALSE)
 
+save_file <- glue("dev_drugs_{DATE_START}_{DATE_END}.parquet")
 write_parquet(
   df_dev_drugs,
-  paste0("data/dev_drugs_", DATE_START, "_",  DATE_END, ".parquet")
+  here("data-raw", "nasir", save_file)
 )
 
 head(df_dev_drugs, 5) |> gt()
@@ -203,9 +212,10 @@ head(df_dev_drugs, 5) |> gt()
 df_bnf_dev <- unique(df_dev_drugs$bnf_code) |>
   fetch_bnf_codes(display_query = FALSE)
 
+save_file <- glue("bnf_dev_{DATE_START}_{DATE_END}.parquet")
 write_parquet(
   df_bnf_dev,
-  paste0("data/bnf_dev_", DATE_START, "_",  DATE_END, ".parquet")
+  here("data-raw", "nasir", save_file)
 )
 
 head(df_bnf_dev, 5) |> gt()
@@ -237,9 +247,10 @@ Writing to a parquet file.
 #| label: save-antidepressants
 #| eval: false
 
+save_file <- glue("df_antidepressants_{DATE_START}_{DATE_END}.parquet")
 write_parquet(
   df_antidepressants,
-  paste0("data/antidepressants_", DATE_START, "_",  DATE_END, ".parquet")
+  here("data-raw", "nasir", save_file)
 )
 ```
 
@@ -266,9 +277,10 @@ gt(head(df_antihistamines, 5))
 #| label: save-antihistamines
 #| eval: false
 
+save_file <- glue("df_antihistamines_{DATE_START}_{DATE_END}.parquet")
 write_parquet(
   df_antihistamines,
-  paste0("data/antihistamines_", DATE_START, "_",  DATE_END, ".parquet")
+  here("data-raw", "nasir", save_file)
 )
 ```
 
@@ -295,9 +307,10 @@ gt(head(df_antipsychotics, 5))
 #| label:  save-antipsychotics
 #| eval: false
 
+save_file <- glue("df_antipsychotics_{DATE_START}_{DATE_END}.parquet")
 write_parquet(
   df_antipsychotics,
-  paste0("data/antipsychotics_", DATE_START, "_",  DATE_END, ".parquet")
+  here("data-raw", "nasir", save_file)
 )
 ```
 
@@ -324,9 +337,10 @@ gt(head(df_norethisterone, 5))
 #| label: save-norethisterone
 #| eval: false
 
+save_file <- glue("df_norethisterone_{DATE_START}_{DATE_END}.parquet")
 write_parquet(
   df_norethisterone,
-  paste0("data/norethisterone_", DATE_START, "_",  DATE_END, ".parquet")
+  here("data-raw", "nasir", save_file)
 )
 ```
 
@@ -354,17 +368,18 @@ c(
 #| eval: false
 
 df_bnf_codes <- c(
-    df_antidepressants$bnf_code,
-    df_antihistamines$bnf_code,
-    df_antipsychotics$bnf_code,
-    df_norethisterone$bnf_code
-  ) |>
-    unique() |>
-    fetch_bnf_codes(display_query = FALSE)
+  df_antidepressants$bnf_code,
+  df_antihistamines$bnf_code,
+  df_antipsychotics$bnf_code,
+  df_norethisterone$bnf_code
+) |>
+  unique() |>
+  fetch_bnf_codes(display_query = FALSE)
 
+save_file <- glue("df_bnf_codes_{DATE_START}_{DATE_END}.parquet")
 write_parquet(
   df_bnf_codes,
-  paste0("data/bnf_", DATE_START, "_",  DATE_END, ".parquet")
+  here("data-raw", "nasir", save_file)
 )
 
 head(df_bnf_codes, 5) |> gt()
@@ -380,7 +395,8 @@ Fetch all NHS regions for likely sensitivity analysis later on:
 
 df_regions <- tbl(CONN, "regional_teams") |> collect()
 
-write_parquet(df_regions, paste0("data/regional_teams.parquet"))
+
+write_parquet(df_regions, here("data-raw", "nasir", "regional_teams.parquet"))
 
 gt(df_regions)
 ```
