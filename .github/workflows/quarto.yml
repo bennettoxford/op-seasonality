@@ -2,7 +2,8 @@ name: Render and Publish Quarto
 
 on:
   push:
-    branches: main
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -24,16 +25,15 @@ jobs:
       - name: Render Quarto
         run: quarto render
 
-      - name: Show rendered files
-        run:  |
-          echo "===== _site ====="
-          find _site -type f
-          echo "===== index ====="
-          head -30 _site/index.html
+      - name: Check rendered site
+        run: |
+          echo "===== Rendered files ====="
+          find _site -type f | sort
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
+          name: github-pages
           path: _site
 
   deploy:
@@ -47,4 +47,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
