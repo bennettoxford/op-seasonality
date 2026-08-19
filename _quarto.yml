@@ -1,8 +1,16 @@
 project:
   type: website
-
+  render:
+    - index.qmd
+    - analysis/Nasir/autodetector-normalised.qmd
+    
 website:
-  title: "My Project"
+  navbar:
+    left:
+      - href: index.qmd
+        text: Home
+      - href: analysis/Nasir/autodetector-normalised.qmd
+        text: Analysis
 
 format:
   html:
