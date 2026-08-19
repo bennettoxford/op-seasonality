@@ -2,6 +2,9 @@
 
 Welcome to this JupyterLab Notebook from the Bennett Institute. We hope you find this notebook both informative and useful. This Notebook is designed as a template for those wishing to learn and/or practice the access and data analyse of data from the OpenPrescribing. For those wishing to learn about how to use this Notebook from scratch (or even a reminder), then please start [here](https://bennett.wiki/) `url needs updating`. Currently, this notebook is only available for Bennett Institute staff, as you need credentials to access the OpenPrescribing data.
 
+
+
+
 ## Getting started
 
 1. Create a new repository and use this repo `openprescribing-template` as a template.
