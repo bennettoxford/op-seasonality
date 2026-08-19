@@ -19,6 +19,7 @@ library(patchwork)
 ```
 ```{r}
 #| label: connect
+#| eval: false
 con <- connect_bq()
 ```
 ```{r}
