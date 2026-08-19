@@ -22,7 +22,14 @@ jobs:
         uses: quarto-dev/quarto-actions/setup@v2
 
       - name: Render Quarto
-        uses: quarto-dev/quarto-actions/render@v2
+        run: quarto render
+
+      - name: Show rendered files
+        run:  |
+          echo "===== _site ====="
+          find _site -type f
+          echo "===== index ====="
+          head -30 _site/index.html
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
@@ -30,12 +37,12 @@ jobs:
           path: _site
 
   deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-
-    runs-on: ubuntu-latest
-    needs: build
 
     steps:
       - name: Deploy to GitHub Pages
