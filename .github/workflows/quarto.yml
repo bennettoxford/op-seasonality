@@ -36,6 +36,22 @@ jobs:
             any::readr
             any::knitr
             any::rmarkdown
+            any::scales
+            any::gt
+            any::here
+            any::arrow
+            any::tsibble
+            any::feasts
+            any::ggrepel
+            any::patchwork
+            any::webshot2
+            any::fpp3
+            any::bizdays
+            any::timeDate
+            any::glue
+            any::purr
+            any::urca
+            
 
       # Set up Quarto
       - name: Setup Quarto
