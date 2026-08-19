@@ -49,7 +49,7 @@ jobs:
             any::bizdays
             any::timeDate
             any::glue
-            any::purr
+            any::purrr
             any::urca
             
 
