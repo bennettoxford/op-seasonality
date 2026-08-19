@@ -4,14 +4,13 @@ project:
 website:
   title: "My Project"
 
-format:
-  html:
-    theme: cosmo
-
   navbar:
     left:
       - href: index.qmd
-          text: Home
-      - href: analysis/Nasir/autodetector-normalised.qmd
-          text: Analysis
-      
+        text: Home
+      - href: analysis/Najma/project.qmd
+        text: Analysis
+
+format:
+  html:
+    theme: cosmo
