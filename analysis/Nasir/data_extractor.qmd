@@ -28,7 +28,7 @@ Before running the notebook for data fetching, kindly check the dates and BNF co
 #| warning: false
 
 library(tidyverse)
-library(opr)
+# library(opr)
 library(arrow)
 library(gt)
 library(here)

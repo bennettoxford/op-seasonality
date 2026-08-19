@@ -19,7 +19,7 @@ If Quarto is new to you, the [Quarto guide](https://quarto.org/docs/guide/) is a
 
 ```{r}
 #| label: setup
-library(opr)
+# library(opr)
 library(tidyverse)
 library(scales)
 library(gt)
