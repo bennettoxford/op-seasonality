@@ -8,10 +8,10 @@ format:
   html:
     theme: cosmo
 
-navbar:
-  left:
-    - href: index.qmd
-        text: Home
-    - href: analysis\Nasir\autodetector-normalised.qmd
-        text: Analysis
-     
+  navbar:
+    left:
+      - href: index.qmd
+          text: Home
+      - href: analysis/Nasir/autodetector-normalised.qmd
+          text: Analysis
+      
