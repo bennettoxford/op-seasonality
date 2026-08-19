@@ -9,9 +9,9 @@ format:
     theme: cosmo
 
 navbar:
-    left:
-      - href: index.qmd
+  left:
+    - href: index.qmd
         text: Home
-      - href: analysis\Nasir\autodetector-normalised.qmd
+    - href: analysis\Nasir\autodetector-normalised.qmd
         text: Analysis
      
