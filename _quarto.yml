@@ -1,16 +1,19 @@
 project:
   type: website
   render:
-    - index.qmd
+    - analysis/index.qmd
     - analysis/Nasir/autodetector-normalised.qmd
+    - analysis/Najma/project.qmd
     
 website:
   navbar:
     left:
-      - href: index.qmd
+      - href: analysis/index.qmd
         text: Home
       - href: analysis/Nasir/autodetector-normalised.qmd
-        text: Analysis
+        text: Nasir
+      - href: analysis/Najma/project.qmd
+        text: Najma
 
 format:
   html:

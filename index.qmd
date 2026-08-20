@@ -1,8 +1,0 @@
----
-title: "My Report"
-format: html
----
-
-# Seasonality Project Description
-
-Some text here

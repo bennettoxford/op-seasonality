@@ -168,7 +168,6 @@ df_list_size <- read_parquet(
 ```{r}
 #| label: normalise-data
 #| eval: true
-#| cache: true
 #| output: false
 
 df_prescribing_normalised <- df_prescribing |>
