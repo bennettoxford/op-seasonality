@@ -1,0 +1,22 @@
+---
+title: "Seasonality in Prescribing"
+format: html
+---
+
+# Who we are
+
+We, [Najma Moallin](https://www.hdruk.ac.uk/people/najma-moallin/) and [Nasir Abdulrasheed](https://www.hdruk.ac.uk/people/nasir-abdulrasheed/), joined the Bennett Institute for Applied Data Science this summer through HDRUK’s 2026 Health Data Science Internship Programme. In this blog we share more about out time and work at the Bennett Institute.
+
+# Introduction 
+
+A bit of background on Najma and Nasir and interest in this area
+
+# Seasonality Projects
+
+Brief description of Najma's project. The full project is [here](Najma/project.qmd)
+
+Brief description of Nasir's project. The full project is [here](Nasir/autodetector-normalised.qmd)
+
+# Main takeaways
+
+A few brief statements
