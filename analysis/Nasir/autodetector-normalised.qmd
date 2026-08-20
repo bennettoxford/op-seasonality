@@ -53,7 +53,6 @@ ESCITALOPRAM <- "0403030X0"
 LORATADINE <- "0304010D0"
 FEXOFENADINE_HCL <- "0304010E0"
 
-DATA_DIR <- "data/"
 PLOTS_DIR <- "outputs/nasir/figures"
 TBL_DIR <- "outputs/nasir/tables"
 
@@ -70,22 +69,11 @@ Loading data from disk. @tbl-load-data shows the expected shape of the data expe
 #| label: tbl-load-data
 #| tbl-cap: Monthly prescribing data for select drugs (May 2016 to April 2026)
 
-bnf_file <- glue("bnf_dev_{DATE_START}_{DATE_END}.parquet")
-df_dev_bnf <- read_parquet(here("data-raw", "nasir", bnf_file))
-
-presc_file <- glue("dev_drugs_{DATE_START}_{DATE_END}.parquet")
-df_dev_drugs <- read_parquet(here("data-raw", "nasir", presc_file))
-
-DF_PRESC <- df_dev_drugs |>
-  left_join(df_dev_bnf, c("bnf_code" = "presentation_code"))
+dev_drugs_file <- glue("df_dev_drugs_{DATE_START}_{DATE_END}.parquet")
+DF_PRESC <- read_parquet(here("data-raw", "nasir", dev_drugs_file))
 
 N_MONTHS <- unique(DF_PRESC$month) |> length()
 N_YEAR_MONTHS <- 12 * (N_MONTHS %/% 12)
-
-write_parquet(
-  head(DF_PRESC, 5),
-  here(TBL_DIR, "all_data.parquet")
-)
 
 head(DF_PRESC, 5) |> gt()
 ```
@@ -235,13 +223,14 @@ In this step, the detrended time series is obtained from either an [STL](https:/
 
 detrend_stl <- function(ts, s.window = 13) {
   DETREND_TYPE <<- "stl"
+
   ts |>
     model(
       STL(items_per_wd ~ trend() + season(window = s.window))
     ) |>
     components() |>
     mutate(detrended = season_year + remainder) |>
-    select(chemical, chemical_code, month, detrended)
+    select(chemical, chemical_code, month, detrended, season_year)
 }
 
 detrend_linear <- function(ts) {
@@ -250,7 +239,7 @@ detrend_linear <- function(ts) {
 
   ts |>
     model(linear_trend = TSLM(items_per_wd ~ trend())) |>
-    residuals() |>
+    augment() |>
     select(chemical, chemical_code, month, detrended = .resid)
 }
 
@@ -299,6 +288,29 @@ detrended_plots <- function(ts_detrend) {
 
   ggsave(
     here(PLOTS_DIR, glue("detrended_plots_{DETREND_TYPE}.png"))
+  )
+
+  p
+}
+
+seasonal_comp_plots <- function(ts_detrend) {
+  if (DETREND_TYPE != "stl") {
+    return(invisible())
+  }
+
+  rows <- length(unique(ts_detrend$chemical))
+  p <- ggplot(ts_detrend) +
+    geom_line(aes(x = month, y = season_year)) +
+    facet_wrap(~chemical, scales = "free", nrow = rows) +
+    theme_minimal() +
+    theme(legend.position = "none") +
+    labs(
+      x = "Month",
+      y = "Items per wd"
+    )
+
+  ggsave(
+    here(PLOTS_DIR, glue("seasonal_comp_plots_{DETREND_TYPE}.png"))
   )
 
   p
@@ -700,6 +712,7 @@ gt(strength_scores)
 ```
 
 ```{r}
+#| label: filter-weak-seasonalities
 DF_PRESC_AGG <- DF_PRESC_AGG |>
   left_join(strength_scores, by = c("chemical_code", "chemical")) |>
   filter(seasonal_strength_year >= 0.33)
@@ -712,6 +725,13 @@ DF_PRESC_AGG <- DF_PRESC_AGG |>
 df_detrended <- detrend_stl(DF_PRESC_AGG)
 
 detrended_plots(df_detrended)
+```
+
+```{r}
+#| label: fig-seasonal-comp-plots
+#| fig-cap: Plots of the pure seasonal components
+
+seasonal_comp_plots(df_detrended)
 ```
 
 ### FFT

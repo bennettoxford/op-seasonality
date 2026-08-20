@@ -1,0 +1,807 @@
+---
+author: Nasir Abdulrasheed
+title: OpenPrescribing Seasonality Detection Pipeline
+execute: 
+  echo: true
+  warning: false
+  message: false
+format:
+  html: 
+    toc: true
+    colorlinks: true
+    number-sections: false
+    fig-pos: H
+    code-fold: true
+    smooth-scroll: true
+    respect-user-color-scheme: true
+    theme:
+     light: litera
+     dark: cyborg
+---
+
+# Introduction
+The aim of this project is to create a robust pipeline in `R` that automates the detection of seasonal patterns in English prescribing using data from [OpenPrescribing](https://openprescribing.net). The ten steps of the pipeline are depicted in @fig-pipeline.
+
+::: {#fig-pipeline}
+![](images/op-seasonity-pipeline-3.png)
+
+Seasonality detector pipeline
+:::
+
+```{r}
+#| label: setup
+#| output: false
+
+library(tidyverse)
+library(arrow)
+library(gt)
+library(webshot2)
+library(fpp3)
+library(bizdays)
+library(timeDate)
+library(patchwork)
+library(here)
+library(glue)
+library(purrr)
+library(urca)
+library(ggrepel)
+
+MAX_PRODUCTS <- Inf
+
+FLUPENTIXOL <- "0402020G0%"
+PALIPERIDONE <- "0402020AB%"
+ZUCLOPENTHIXOL <- "0402020Z0%"
+NORETHISTERONE <- "0604012P0%"
+CELECOXIB <- "1001010AH%"
+
+PLOTS_DIR <- "outputs/nasir/test/figures"
+TBL_DIR <- "outputs/nasir/test/tables"
+
+DETREND_TYPE <- "stl"
+
+DATE_START <- "2016-05-01"
+DATE_END <- "2026-04-01"
+```
+
+# Step 1: Load data
+Loading data from disk. @tbl-load-data shows the expected shape of the data expected to be fed into the pipeline.
+
+```{r}
+#| label: tbl-load-data
+#| tbl-cap: Monthly prescribing data for select drugs (May 2016 to April 2026)
+
+test_drugs_file <- glue("df_test_drugs_{DATE_START}_{DATE_END}.parquet")
+DF_PRESC <- read_parquet(here("data-raw", "nasir", test_drugs_file))
+
+N_MONTHS <- unique(DF_PRESC$month) |> length()
+N_YEAR_MONTHS <- 12 * (N_MONTHS %/% 12)
+
+head(DF_PRESC, 5) |> gt()
+```
+
+The data used spans exactly `r {N_MONTHS}` months (`r ({N_MONTHS / 12})` years).
+
+# Step 2: Preprocessing
+
+To normalise total monthly items, the number of [dispensing days](https://www.nhsbsa.nhs.uk/prescription-data/understanding-our-data/financial-forecasting) in each month in the data was computed:
+
+$$
+N_{dispensing\_days} = Total\_Days - Sundays - Bank\_Holidays 
+$${#eq-dispensing-days}
+
+```{r}
+#| label: func-work-days
+#| warning: false
+
+# bank holidays in the data period
+uk_holidays <- as.Date(holidayLONDON(year(DATE_START):year(DATE_END)))
+
+dispensing_days <- create.calendar(
+  name = "UK",
+  weekdays = c("sunday"),
+  holidays = uk_holidays
+)
+
+month_work_days <- function(date) {
+  month_start <- as.Date(date)
+  month_end <- seq(month_start, by = "month", length.out = 2)[2] - 1
+  length(bizseq(month_start, month_end, dispensing_days))
+}
+```
+
+The data is then aggregated by `month`, `chemical_code`, and `chemical` columns to create a monthly `items_per_wd` column that holds the total items of that chemical dispensed in a given month across English primary care, normalised by the number of dispensing days. @tbl-aggregated-data shows a sample of the resulting data following aggregation.
+
+```{r}
+#| label: func-aggregate-data
+
+aggregate_ts <- function(df) {
+  df |>
+    summarise(
+      total_items = sum(items),
+      .by = c(month, chemical_code, chemical)
+    ) |>
+    mutate(month = yearmonth(month)) |>
+    as_tsibble(index = month, key = c(chemical, chemical_code)) |>
+    mutate(items_per_wd = total_items / map_dbl(month, month_work_days))
+}
+```
+
+# Step 3: Visualisation
+For all chemicals present in the data, we plotted [time, seasonal, seasonal subseries](https://otexts.com/fpp3/graphics.html), and [ACF](https://en.wikipedia.org/wiki/Autocorrelation) plots.
+
+```{r}
+#| label: func-visualise
+
+visualise_ts <- function(ts) {
+  if (!inherits(ts, "tbl_ts")) {
+    stop("Argument `ts` must be a time series object")
+  }
+
+  chems <- unique(ts$chemical)
+  plots <- list()
+  for (i in seq_along(chems)) {
+    chem <- chems[i]
+    chem_ts <- filter(ts, chemical == chem)
+    time_plot <- chem_ts |>
+      autoplot(items_per_wd) +
+      theme(legend.position = "none") +
+      theme_minimal() +
+      labs(y = "Items per work day", x = "Month [1M]")
+
+    seasonal_plot <- chem_ts |>
+      gg_season(
+        items_per_wd,
+        labels = "right",
+        labels_repel = TRUE
+      ) +
+      theme_minimal() +
+      labs(y = "Items per work day", x = "Month [1M]")
+
+    subseries_plot <- chem_ts |>
+      gg_subseries(items_per_wd) +
+      theme_minimal() +
+      theme(
+        axis.text.x = element_text(angle = 90, hjust = 1),
+        strip.text.y = element_blank(),
+        strip.background = element_blank()
+      ) +
+      labs(y = "Items per work day", x = "Year")
+
+    acf_plot <- chem_ts |>
+      ACF(items_per_wd) |>
+      autoplot() +
+      theme_minimal() +
+      labs(y = "ACF", x = "Lag [1M]")
+
+    p <- (time_plot / seasonal_plot / subseries_plot) +
+      plot_layout(axis_titles = "collect_y")
+    p <- (p / acf_plot) +
+      plot_annotation(title = chem)
+
+    save_file <- glue("{chem}_plots_{DATE_START}_{DATE_END}.png")
+    ggsave(
+      here(PLOTS_DIR, save_file),
+      width = 7,
+      height = 7,
+      units = "in"
+    )
+
+    plots[[i]] <- p
+  }
+
+  plots
+}
+```
+
+# Step 4: Detrending
+
+In this step, the detrended time series is obtained from either an [STL](https://otexts.com/fpp3/stl.html) decompoisition, [LOESS](https://en.wikipedia.org/wiki/Local_regression), or [linear model](https://otexts.com/fpp3/regression-intro.html) of the original time series. All three methods were tested and the results compared. The detrended series is then plotted as shown in @fig-detrended-plots. [Seasonal strength scores](https://otexts.com/fpp3/stlfeatures.html#stlfeatures), trough and peak months are also computed using the `feats::feat_stl()` function.
+
+```{r}
+#| label: func-detrend
+
+detrend_stl <- function(ts, s.window = 13) {
+  DETREND_TYPE <<- "stl"
+  ts |>
+    model(
+      STL(items_per_wd ~ trend() + season(window = s.window))
+    ) |>
+    components() |>
+    mutate(detrended = season_year + remainder) |>
+    select(chemical, chemical_code, month, detrended, season_year)
+}
+
+detrend_linear <- function(ts) {
+  # simple linear time trend
+  DETREND_TYPE <<- "linear"
+
+  ts |>
+    model(linear_trend = TSLM(items_per_wd ~ trend())) |>
+    residuals() |>
+    select(chemical, chemical_code, month, detrended = .resid)
+}
+
+detrend_loess <- function(ts, span = 0.75) {
+  # plain loess detrending
+  DETREND_TYPE <<- "loess"
+
+  ts |>
+    as_tibble() |>
+    group_by(chemical, chemical_code) |>
+    mutate(
+      t = row_number(),
+      # Fit the Loess curve and extract the fitted trend line
+      trend_curve = loess(items_per_wd ~ t, span = span)$fitted,
+      detrended = items_per_wd - trend_curve
+    ) |>
+    ungroup() |>
+    select(-t, -trend_curve) |>
+    as_tsibble(index = month, key = c(chemical, chemical_code))
+}
+
+plot_decomp <- function(ts_decomp) {
+  chems <- unique(ts$chemical)
+  for (chem in chems) {
+    chem_decomp <- ts_decomp |>
+      filter(chemical == chem)
+
+    (chem_decomp |>
+      autoplot(items_per_wd) +
+      labs(title = chem)) |>
+      print()
+  }
+}
+
+detrended_plots <- function(ts_detrend) {
+  rows <- length(unique(ts_detrend$chemical))
+  p <- ggplot(ts_detrend) +
+    geom_line(aes(x = month, y = detrended)) +
+    facet_wrap(~chemical, scales = "free", nrow = rows) +
+    theme_minimal() +
+    theme(legend.position = "none") +
+    labs(
+      x = "Month",
+      y = "Items per wd"
+    )
+
+  ggsave(
+    here(PLOTS_DIR, glue("detrended_plots_{DETREND_TYPE}.png"))
+  )
+
+  p
+}
+
+seasonal_comp_plots <- function(ts_detrend) {
+  rows <- length(unique(ts_detrend$chemical))
+  p <- ggplot(ts_detrend) +
+    geom_line(aes(x = month, y = season_year)) +
+    facet_wrap(~chemical, scales = "free", nrow = rows) +
+    theme_minimal() +
+    theme(legend.position = "none") +
+    labs(
+      x = "Month",
+      y = "Items per wd"
+    )
+
+  ggsave(
+    here(PLOTS_DIR, glue("seasonal_comp_plots_{DETREND_TYPE}.png"))
+  )
+
+  p
+}
+
+strength_stl <- function(ts_agg) {
+  FIRST_MONTH <- ts_agg |>
+    slice_head(n = 1) |>
+    pull(month) |>
+    month()
+
+  results <- ts_agg |>
+    features(items_per_wd, feat_stl) |>
+    select(-spikiness, -linearity, -curvature, -starts_with("stl_")) |>
+    mutate(
+      seasonal_peak = month.abb[
+        ((FIRST_MONTH - 1 + seasonal_peak_year) %% 12) + 1
+      ],
+      seasonal_trough = month.abb[
+        ((FIRST_MONTH - 1 + seasonal_trough_year) %% 12) + 1
+      ]
+    ) |>
+    select(-seasonal_peak_year, -seasonal_trough_year)
+
+  write_parquet(
+    results,
+    here(TBL_DIR, "strength_scores.parquet")
+  )
+
+  results
+}
+```
+
+# Step 5 & 6: FFT filtering and candidate periods selection
+
+A fast fourier transform ([FFT](https://en.wikipedia.org/wiki/Fast_Fourier_transform)) of the detrended time series is taken to see the component signals (seasonalities) and their respective amplitudes/strength. For computing the FFT of the series, we use the last $N$ months of the series that makes up full years. $N$ is given by:
+
+$$
+N = 12 \left\lfloor \frac{total\ months}{12} \right\rfloor
+$${#eq-year-months}
+After computing the FFT, we only keep the coefficients for periods bins between 2 and 24 months. This is because the [Nyquist](https://en.wikipedia.org/wiki/Nyquist_frequency) for monthly data is `0.5 Hz` (2 months) and we are mostly interested in annual and subannual seasonalities.
+
+```{r}
+#| label: fft-functions
+
+compute_fft <- function(ts) {
+  if (!is.vector(ts)) {
+    stop("Argument `ts` must be a vector")
+  }
+
+  len_ts <- length(ts)
+
+  ts <- ts[(len_ts - N_YEAR_MONTHS):len_ts]
+  len_ts <- N_YEAR_MONTHS / 2
+
+  amps <- fft(ts) |> abs()
+
+  amps[2:(len_ts + 1)]
+}
+
+filter_fft <- function(fft_amps, top_k = 1) {
+  if (!is.vector(fft_amps)) {
+    stop("Argument `fft_amps` must be a vector")
+  }
+
+  if (top_k > length(fft_amps)) {
+    stop("`top_k` cannot exceed the length of `fft_amps` amplitudes vector")
+  }
+
+  sort_idx <- order(fft_amps, decreasing = TRUE)
+  min_freq <- N_YEAR_MONTHS %/% 24
+  max_freq <- N_YEAR_MONTHS %/% 2
+  sort_idx <- sort_idx[(sort_idx >= min_freq) & (sort_idx <= max_freq)]
+  candidates <- sort_idx[1:top_k]
+  amps <- fft_amps[candidates]
+
+  list(freqs = candidates, amps = amps)
+}
+
+plot_fft <- function(fft_amps, chemical) {
+  if (!is.vector(fft_amps)) {
+    stop("Argument `fft_amps` must be a vector")
+  }
+
+  len_ts <- length(fft_amps)
+
+  freqs <- 1:len_ts
+
+  spectral_plot <- ggplot(mapping = aes(x = freqs, y = fft_amps)) +
+    geom_segment(
+      aes(xend = freqs, y = 0, yend = fft_amps),
+      colour = "steelblue"
+    ) +
+    geom_point(colour = "steelblue", size = 1) +
+    theme_minimal() +
+    labs(
+      x = "Frequency",
+      y = "Power",
+      title = chemical
+    )
+
+  save_file <- glue("{chemical}_fft_{DETREND_TYPE}_{DATE_START}_{DATE_END}.png")
+  ggsave(
+    here(PLOTS_DIR, save_file),
+    width = 7,
+    height = 7,
+    units = "in"
+  )
+
+  spectral_plot
+}
+```
+
+@fig-spectral-plots shows the [periodograms](https://en.wikipedia.org/wiki/Periodogram) for the chemicals in the current data. It shows the frequecies/wave number of the seasonal signals present in the time series, along with their respective amplitdes/power. The seasonal period, $p$, which is the number of month after which the seasonal signal repeats is given by:
+
+$$
+p = N / f
+$${#eq-period}
+where $N$ is the number of months from @eq-year-months and $f$ is the frequenc/wave number from the x axis of the periodograms. So for frequency 10, seasonal period is $`r {N_YEAR_MONTHS}` / 10 = 12\ months$, for frequency 20, $p$ is $`r {N_YEAR_MONTHS}` / 20 = 6\ months$, etc.
+
+```{r}
+#| label: func-fft-score
+
+score <- function(ts_dable, top_k = 1) {
+  chems <- unique(ts_dable$chemical)
+  scores <- tibble()
+  plots <- list()
+
+  for (i in seq_along(chems)) {
+    chem <- chems[i]
+    chem_dable <- ts_dable |>
+      filter(chemical == chem)
+
+    fft_amps <- chem_dable |>
+      pull(detrended) |>
+      compute_fft()
+
+    plots[[i]] <- plot_fft(fft_amps, chem)
+
+    amps_freqs <- filter_fft(fft_amps, top_k)
+    tmp_df <- tibble(chemical = chem)
+
+    for (j in seq_along(amps_freqs$freqs)) {
+      col_period <- paste0("period_", j)
+      col_freq <- paste0("freq_", j)
+      col_score <- paste0("score_", j)
+
+      tmp_df <- bind_cols(
+        tmp_df,
+        tibble(
+          "{col_period}" := round(N_YEAR_MONTHS / amps_freqs$freqs[j], 2),
+          "{col_freq}" := round(amps_freqs$freqs[j], 2),
+          "{col_score}" := amps_freqs$amps[j]
+        )
+      )
+    }
+
+    scores <- bind_rows(scores, tmp_df)
+  }
+
+  list(plots = plots, scores = scores)
+}
+```
+
+# Step 7 & 8: DHR Modelling and Selection
+
+In this step, we fit Dynamic Harmonic Regression([DHR](https://otexts.com/fpp3/dhr.html)) models to the aggregated time series data. Each model uses the each candidate period ($p$) as its fundamental frequency/period and set $K$ (the number of harmonics to include) to be a maximum of $p // 2$ (its Nyquist). Therefore, the maximum number of models fitted is given by:
+
+$$
+N \leq \sum_{i=1}^{n} \left\lfloor \frac{p_i}{2} \right\rfloor
+$$
+and each model is represented as:
+
+$$
+\mathcal{M}
+=
+\left\{
+\operatorname{DHR}(p,k)
+\;\middle|\;
+p \in \{p_1,p_2,\ldots,p_n\},
+\quad
+k=1,\ldots,\left\lfloor\frac{p}{2}\right\rfloor
+\right\}
+$$
+
+Within each period, we used the likelihood ratio test ([LRT](https://en.wikipedia.org/wiki/Likelihood-ratio_test)) to determine if the difference between successively fitted models (with varying $k$'s) are statistically significant and stop fitting models when the BIC gets worse. We then select the model with the best BIC that is significantly better than its predecessor ($k - 1$).
+
+```{r}
+#| label: func-modelling
+#| warning: false
+#| error: false
+
+fit_models <- function(ts, df_periods, max_k = 6) {
+  period_grid <- df_periods |>
+    pivot_longer(
+      cols = starts_with("period_"),
+      names_to = "period_name",
+      values_to = "period",
+      values_drop_na = TRUE
+    ) |>
+    mutate(max_allowed_k = pmin(max_k, period %/% 2)) |>
+    select(chemical, period, max_allowed_k)
+
+  map_dfr(unique(df_periods$chemical), function(chem) {
+    ts_chem <- ts |> filter(chemical == chem)
+
+    # compute model K = 0 once, not dependent on P
+    m0 <- ts_chem |> model(ARIMA(items_per_wd ~ PDQ(0, 0, 0)))
+    g0 <- glance(m0) |>
+      mutate(
+        .model = "K0",
+        period = NA,
+        k = 0,
+        lrt_stat = NA,
+        p_value = NA,
+        .after = .model
+      )
+
+    periods_chem <- period_grid |>
+      filter(chemical == chem) |>
+      select(period, max_allowed_k)
+
+    models_df <- pmap_dfr(periods_chem, function(period, max_allowed_k) {
+      if (max_allowed_k < 1) {
+        return(tibble())
+      }
+
+      prev_log_lik <- g0$log_lik
+      prev_bic <- g0$BIC
+      rows <- vector("list", max_allowed_k)
+
+      for (k in 1:max_allowed_k) {
+        form <- items_per_wd ~ fourier(period = period, K = k) + PDQ(0, 0, 0)
+        m <- ts_chem |> model(ARIMA(form))
+
+        g <- glance(m)
+        g <- mutate(
+          .data = g,
+          .model = glue("P{period}_K{k}"),
+          period = period,
+          k = k,
+          # D statistic: -2 * (L0 - L1)
+          lrt_stat = -2 * (prev_log_lik - g$log_lik),
+          p_value = pchisq(lrt_stat, df = 2, lower.tail = FALSE),
+          .after = .model
+        )
+
+        # Short-circuit: stop growing this period's harmonic ladder the
+        # moment another Fourier pair fails to improve BIC
+        if (g$BIC >= prev_bic) {
+          break
+        }
+
+        rows[[k]] <- g
+
+        prev_log_lik <- g$log_lik
+        prev_bic <- g$BIC
+      }
+
+      bind_rows(rows)
+    })
+
+    bind_rows(g0, models_df) |>
+      mutate(chemical = chem, .before = 1) |>
+      select(-ar_roots, -ma_roots) |>
+      filter(is.na(p_value) | p_value < 0.05) |>
+      mutate(
+        p_value = if_else(
+          !is.na(p_value),
+          format.pval(p_value, digits = 2),
+          "-"
+        )
+      ) |>
+      group_by(chemical_code, chemical) |>
+      arrange(BIC)
+  })
+}
+```
+
+# Step 9: Summary report
+
+A summary table is constructed with the following information:
+
+- Chemical name
+- The top 3 dominant periods from FFT (ranked by amplitudes/power)
+- The fundamental and harmonic periods of the best performing DHR model
+- The peak and trough months
+- Specifications of the best performing model
+
+```{r}
+#| label: func-report
+
+generate_report <- function(
+  ts_original,
+  candidates,
+  models,
+  strength,
+  top_k = 5
+) {
+  period_cols <- paste0("period_", 1:top_k)
+  candidates_long <- candidates |>
+    pivot_longer(
+      cols = all_of(period_cols),
+      names_to = "rank",
+      values_to = "period",
+      values_drop_na = TRUE
+    ) |>
+    mutate(rank = as.integer(str_extract(rank, "\\d+"))) |>
+    arrange(chemical, rank)
+
+  # FFT dominant periods
+  dom_period <- candidates_long |>
+    mutate(period = round(period, 1)) |>
+    summarise(
+      dominant_periods = paste(head(period, 3), collapse = ", "),
+      .by = "chemical"
+    )
+
+  best_models <- models |>
+    group_by(chemical) |>
+    slice_head(n = 1) |>
+    ungroup() |>
+    select(chemical, .model, period, k, p_value)
+
+  # component periods contained in the winning model:
+  # period/1, period/2, ..., period/k.
+  model_periods <- best_models |>
+    mutate(harmonic = map(k, seq_len)) |>
+    unnest(harmonic) |>
+    mutate(component_period = round(period / harmonic, 1)) |>
+    arrange(chemical, harmonic) |>
+    summarise(
+      model_period_list = paste(component_period, collapse = ", "),
+      n_components = n(),
+      .by = "chemical"
+    )
+
+  strength_info <- strength |>
+    select(chemical, seasonal_strength_year, seasonal_peak, seasonal_trough)
+
+  report_tbl <- dom_period |>
+    left_join(best_models, by = "chemical") |>
+    left_join(model_periods, by = "chemical") |>
+    left_join(strength_info, by = "chemical") |>
+    mutate(
+      model_info = glue("{.model} (P={period}, K={k})"),
+      .keep = "unused"
+    ) |>
+    select(
+      Chemical = chemical,
+      `Dominant periods (FFT)` = dominant_periods,
+      `Model periods` = model_period_list,
+      `Peak month` = seasonal_peak,
+      `Trough month` = seasonal_trough,
+      `Seasonal strength` = seasonal_strength_year,
+      `Best model` = model_info,
+      `LRT p-value` = p_value
+    )
+
+  report_tbl
+}
+```
+
+# Full Pipeline
+Putting it all together.
+
+### Aggregation and Visualisation 
+
+```{r}
+#| label: tbl-aggregated-data
+#| tbl-cap: Sample of aggregated time series data
+
+DF_PRESC_AGG <- aggregate_ts(DF_PRESC)
+
+head(DF_PRESC_AGG, 5) |> gt()
+```
+
+```{r}
+#| label: fig-vis
+#| fig-cap: Plots of original time series
+
+purrr::walk(visualise_ts(DF_PRESC_AGG), print)
+```
+
+```{r}
+#| label: data-length-check
+#| output: asis
+
+if (N_YEAR_MONTHS < 60) {
+  cat("::: {.callout-important}\n")
+  cat("## Halted\n\n")
+  cat("**Analysis terminated:** fewer than 5 years of data are available.\n")
+  cat(":::\n")
+
+  knitr::knit_exit()
+}
+```
+
+### Detrending
+
+Strengh scores
+```{r}
+#| label: tbl-strength-scores
+#| tbl-cap: Seasonal and trend strength using `feasts::feat_stl()`
+
+strength_scores <- strength_stl(DF_PRESC_AGG)
+
+gt(strength_scores)
+```
+
+```{r}
+DF_PRESC_AGG <- DF_PRESC_AGG |>
+  left_join(strength_scores, by = c("chemical_code", "chemical")) |>
+  filter(seasonal_strength_year >= 0.33)
+```
+
+```{r}
+#| label: fig-detrended-plots
+#| fig-cap: Detrended time plots
+
+df_detrended <- detrend_stl(DF_PRESC_AGG)
+
+detrended_plots(df_detrended)
+```
+
+```{r}
+#| label: fig-seasonal-comp-plots
+#| fig-cap: Plots of the pure seasonal components
+
+seasonal_comp_plots(df_detrended)
+```
+
+### FFT
+```{r}
+#| label: fig-spectral-plots
+#| fig-cap: Spectral plots
+
+TOP_K <- 5
+fft_scores <- score(df_detrended, top_k = TOP_K)
+
+wrap_plots(fft_scores$plots, ncol = 2)
+```
+
+### Candidate periods
+```{r}
+#| label: tbl-fft-periods
+#| tbl-cap: !expr glue("Candidate periods found and their signal strength from FFT (Top {TOP_K})")
+
+candidates <- fft_scores$scores
+
+write_parquet(
+  candidates,
+  here(TBL_DIR, glue("candidate_periods_{DETREND_TYPE}.parquet"))
+)
+gt(candidates)
+```
+
+### Modelling
+
+```{r}
+#| label: tbl-modelling
+#| tbl-cap: Top 3 performing models for each chemical
+#| #| warning: false
+#| error: false
+
+models_results <- DF_PRESC_AGG |>
+  fit_models(candidates)
+
+write_parquet(
+  models_results,
+  here(TBL_DIR, glue("modelling_results_{DETREND_TYPE}.parquet"))
+)
+
+slice_head(models_results, n = 3) |> gt()
+```
+
+### Summary report
+
+```{r}
+#| label: report
+
+summary_tbl <- generate_report(
+  ts_original = DF_PRESC_AGG,
+  candidates = candidates,
+  models = models_results,
+  strength = strength_scores,
+  top_k = TOP_K
+)
+
+write_parquet(
+  summary_tbl,
+  here(TBL_DIR, glue("summary_table_{DETREND_TYPE}.parquet"))
+)
+
+gt(summary_tbl) |>
+  tab_header(
+    title = "Seasonality Detection Summary",
+    subtitle = glue(
+      "Data period: {DATE_START} to {DATE_END} | Detrending: {DETREND_TYPE}"
+    )
+  ) |>
+  fmt_number(columns = `Seasonal strength`, decimals = 2) |>
+  tab_style(
+    style = cell_fill(color = "#e6f2ff"),
+    locations = cells_body(columns = `Model periods`)
+  ) |>
+  tab_footnote(
+    footnote = paste0(
+      "Dominant periods from FFT (strongest amplitudes), shown independently as a sanity check. ",
+      "Model periods are the harmonic components (period/1, period/2, ...) actually retained ",
+      "in the BIC-selected model. Peak/Trough months are the calendar months with highest/lowest ",
+      "average dispensing. Best model from ARIMA errors + Fourier terms, selected by BIC. ",
+      "Seasonal strength from STL decomposition."
+    )
+  ) |>
+  tab_style(
+    style = cell_text(style = "italic", size = px(12)),
+    locations = cells_footnotes()
+  )
+```
