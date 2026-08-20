@@ -6,7 +6,7 @@ format: html
 
 ```{r}
 #| label: setup
-library(opr)
+# library(opr)
 library(tidyverse)
 library(scales)
 library(gt)
@@ -19,6 +19,7 @@ library(patchwork)
 ```
 ```{r}
 #| label: connect
+#| eval: false
 con <- connect_bq()
 ```
 ```{r}
@@ -167,7 +168,6 @@ df_list_size <- read_parquet(
 ```{r}
 #| label: normalise-data
 #| eval: true
-#| cache: true
 #| output: false
 
 df_prescribing_normalised <- df_prescribing |>
