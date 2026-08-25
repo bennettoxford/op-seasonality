@@ -24,3 +24,14 @@ __pycache__/
 
 # Linux trash directories
 .Trash-*/
+
+# Quarto rendered files and cache
+analysis/**/*_cache/
+analysis/**/*_files/
+analysis/**/*.html
+
+# R env files
+.Renviron
+
+/.quarto/
+**/*.quarto_ipynb
