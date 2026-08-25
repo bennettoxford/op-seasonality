@@ -19,17 +19,17 @@ format:
      dark: cyborg
 ---
 
-## Introduction
+# Introduction
 
 This project investigates seasonal patterns in prescribing in English primary care using routinely collected NHS prescribing data from OpenPrescribing. The analysis examines a selection of medicines with expected seasonal and non-seasonal prescribing patterns, using visual and statistical time-series methods to identify recurring changes over time.
 
 The analysis combines seasonal visualisations (`gg_season()` and `gg_subseries()`) with STL decomposition to separate longer-term trends from recurring seasonal variation. The aim is to explore how clearly seasonal patterns can be identified in prescribing data and how these patterns should be interpreted in the context of real-world clinical and temporal factors.
 
-## Research question
+# Research question
 
 Can recurring seasonal patterns in prescribing be identified and meaningfully interpreted from routinely collected NHS prescribing data?
 
-## Setup
+# Setup
 
 Load packages and set up variables for BNF codes and data date range (January 2015 to December 2025)
 
@@ -57,7 +57,7 @@ Connect to BigQuery. See [here](https://bennettoxford.github.io/opr/articles/opr
 con <- connect_bq()
 ```
 
-## Data extraction
+# Data extraction
 
 Prescribing data were obtained from OpenPrescribing, which provides routinely collected NHS prescribing data for England.
 
@@ -146,7 +146,7 @@ The extraction produced a monthly time series for each medicine, providing the b
 ```{r}
 #| label: tbl-load-data
 #| eval: true
-#| 
+#| output: true
 df_prescribing <- read_parquet(
   here("data-raw", "najma", "df_prescribing.parquet")
 )
@@ -164,7 +164,7 @@ df_list_size <- read_parquet(
 )
 ```
 
-## Data Normalisation
+# Data Normalisation
 
 Prescribing counts are normalised by practice list size, shown as items per 1000 registered patients per month. This is to account for raw prescribing item counts not being directly comparable across practices over time due to differences in list sizes.
 
@@ -205,16 +205,16 @@ df_monthly_rate <- df_monthly_rate |>
   mutate(month = yearmonth(as.Date(month)))
 ```
 
-## Visual Seasonality Assessment
+# Visual Seasonality Assessment
 
-# Seasonal Plots
+## Seasonal Plots
 
 Before applying any quantitative measure, we first inspect seasonality visually using `gg_season()`, which plots each year's data as a separate line across the months of the year. This lets us see, by eye, whether a drug's prescribing consistently peaks or troughs in the same months year after year ,as opposed to a one-off spike or a gradual trend.
 
 ```{r}
 #| label: fig-visualise-season1
 #| eval: true
-#| output: false
+#| output: true
 
 df_monthly_rate_tsibble <- df_monthly_rate |>
   mutate(month = yearmonth(month)) |>
@@ -254,11 +254,11 @@ combined_plot1_benchmark
 ```{r}
 #| label: fig-visualise-season2
 #| eval: true
-#| output: false
+#| output: true
 combined_plot1_negative
 ```
 
-# Findings:
+### Findings:
 
 `gg_season()` plots display distinct visual seasonality for most of the positive controls. Amoxicillin shows a strong and consistent winter peak (Dec-Jan) and summer trough (Jul-Aug) across nearly every year bar 2020, a distinct anomaly. Clarithromycin follows a similar pattern, though with more year-to-year noise, especially in 2020-2021. Cetrizine and Fexofenadine show the cleanest seasonal signals of all the drugs, with consistent, low-noise summer peaks in June.
 
@@ -266,7 +266,7 @@ Phenxomethylpenicllin is the weakest positive control visually, with a much smal
 
 The negative controls displayed no consistent recurring shape. Mesalazine had considerable monthly variation with no stable pattern across the years. Tamoxifen and Finasteride were both dominated by long-term strong trends, rather than any meaningful seasonal cycle.
 
-# Subseries Plots
+## Subseries Plots
 
 As a complementary view, `gg_subseries()` groups all observations by month (all Januaries together, all Februaries together, etc.) and shows the average level for each month as a horizontal reference line. This makes it easier to spot whether certain months are systematically higher or lower across the whole time series, independent of year-to-year trend or noise that can make the `gg_season()` plot harder to read.
 
@@ -308,11 +308,11 @@ combined_plot2_negative
 combined_plot2_negative
 ```
 
-# Findings
+### Findings
 
 The subseries plots displayed similar findings to the gg_season() graphs, with a few distinct additional findings. Cetirizine showed a pronounced downward trend across individual months, indicating that its apparent seasonal pattern occurred alongside a long-term decline in prescribing. In contrast, fexofenadine showed a recurring seasonal pattern alongside an increase in prescribing over time. This highlights how recurring seasonal patterns can coexist with substantial longer-term changes in prescribing.
 
-# Save Visual Assessment Figures
+## Save Visual Assessment Figures
 
 Individual `gg_season()` and `gg_subseries()` plots for each control drug are combined into four composite figures using the `patchwork` package, and saved for reference.
 
@@ -350,7 +350,7 @@ ggsave(
   )
 ```
 
-## STL-Based Seasonal Strength Scoring
+# STL-Based Seasonal Strength Scoring
 
 Having visually assessed seasonality, we now turn to a quantitative measure: seasonal strength scores derived from STL (Seasonal-Trend decomposition using Loess), calculated via `feat_stl()` from the `feasts` package. This decomposes each time series into trend, seasonal, and remainder components, and computes a seasonal strength score (Wang et al, 2006) reflecting how much of the variation in the series is explained by the seasonal component relative to noise.
 
@@ -368,7 +368,7 @@ df_feat_stl <- df_monthly_rate_tsibble |>
 df_feat_stl
 ```
 
-# Findings:
+## Findings:
 
 Taking the threshold of 0.64 (Hyndman RJ, Athanasopoulos G., 2021) into account, the positive controls behaved as expected: Amoxicillin (0.811), clarithromycin (0.750), cetirizine (0.868) and fexofenadine (0.942) all scored above the threshold. This aligns with the winter and summer seasonal patterns observed in the prior visual assessment. However, phenoxymethylpenicillin (0.64) fell below the threshold despite it being a known seasonal drug.
 
@@ -376,14 +376,14 @@ This highlights a limitation of applying this threshold. The 0.64 cutoff orignia
 
 As expected, all three negative controls scored below the threshold: mesalazine (0.550), tamoxifen (0.553) and finasteride (0.510).
 
-# Visualising the STL decomposition
+## Visualising the STL decomposition
 
 We plot the full decomposition for both the positive and negative controls to understand what the strength score is actually capturing. This displays the original series alongside its trend, seasonal and remainder components (separated). This could help identify possible outliers, trend shifts etc. that could influence the seasonal strength score.
 
 ```{r}
 #| label: fig-visualise-stl-decomposition
 #| eval: true
-#| output: false
+#| output: true
 
 ## STL for every drug at once
 df_stl_components <- df_monthly_rate_tsibble |>
@@ -420,11 +420,11 @@ STL allowed the recurring seasonal component to be separated from longer-term tr
 ```{r}
 #| label: fig-visualise-stl-decomposition2
 #| eval: true
-#| output: false
+#| output: true
 combined_plot3_negative
 ```
 
-# Save STL Decomposition figures
+### Save STL Decomposition figures
 
 Like the `gg_season()` figures, these STL decompositions plots are combined into two plots (separated by positive and negative), allowing for comparison against the prior visual assessment.
 
