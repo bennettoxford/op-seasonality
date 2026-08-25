@@ -335,7 +335,12 @@ combined_plot2_negative
 
 # Findings
 
-The subseries plots displayed similar findings to the gg_season() graphs, with a few distinct additional findings. Cetirizine showed a pronounced downward trend across individual months, indicating that its apparent seasonal pattern occurred alongside a long-term decline in prescribing. In contrast, Fexofenadine showed a recurring seasonal pattern alongside an increase in prescribing over time. This highlights how recurring seasonal patterns can coexist with substantial longer-term changes in prescribing.
+The subseries plots displayed similar findings to the gg_season() graphs, with a few distinct
+additional findings. Cetirizine showed a pronounced downward trend across individual months,
+indicating that its apparent seasonal pattern occurred alongside a long-term decline in
+prescribing. In contrast, Fexofenadine showed a recurring seasonal pattern alongside an increase
+in prescribing over time. This highlights how recurring seasonal patterns can coexist with
+substantial longer-term changes in prescribing.
 
 # Save Visual Assessment Figures
 
