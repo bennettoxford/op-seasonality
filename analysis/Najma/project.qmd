@@ -212,7 +212,7 @@ Before applying any quantitative measure, we first inspect seasonality visually 
 ```{r}
 #| label: fig-visualise-season1
 #| eval: true
-#| output: false
+#| output: true
 
 df_monthly_rate_tsibble <- df_monthly_rate |>
   as_tsibble(index = month, key = chemical)
