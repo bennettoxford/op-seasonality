@@ -188,15 +188,16 @@ df_prescribing_normalised <- df_prescribing_normalised |>
 ## aggregate data (national level, for the primary seasonality analysis)
 
 df_monthly_items <- df_prescribing |>
-  summarise(items = sum(items), .by = c(month, chemical))
+  group_by(chemical, month) |>
+  summarise(items = sum(items), .groups = "drop")
 
-df_monthly_patients <- df_list_size |>
+df_monthly_list_size <- df_list_size |>
   group_by(month) |>
-  summarise(total_patients = sum(total_list_size))
+  summarise(total_list_size = sum(total_list_size), .groups = "drop")
 
 df_monthly_rate <- df_monthly_items |>
-  left_join(df_monthly_patients, by = "month") |>
-  mutate(rate_per_1000 = items / total_patients * 1000)
+  left_join(df_monthly_list_size, by = "month") |>
+  mutate(rate_per_1000 = items / total_list_size * 1000)
 
 ## convert date for tsibble
 
@@ -216,6 +217,7 @@ Before applying any quantitative measure, we first inspect seasonality visually 
 #| output: false
 
 df_monthly_rate_tsibble <- df_monthly_rate |>
+  mutate(month = yearmonth(month)) |>
   as_tsibble(index = month, key = chemical)
 
 drugs <- unique(df_monthly_rate_tsibble$chemical)
