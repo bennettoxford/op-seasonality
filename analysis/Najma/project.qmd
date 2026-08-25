@@ -173,7 +173,6 @@ Practice-level list size data is drawn from `practice_statistics` and joined to 
 ```{r}
 #| label: normalise-data
 #| eval: true
-#| cache: true
 #| output: false
 
 df_prescribing_normalised <- df_prescribing |>
