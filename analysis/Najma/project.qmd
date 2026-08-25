@@ -355,6 +355,7 @@ The aim here is to test whether this single quantitative score can reliably dist
 
 ```{r}
 #| label: compute-feat-stl
+#| tbl-cap: Seasonal score for select drugs
 #| eval: true
 #| output: true
 
@@ -362,7 +363,7 @@ The aim here is to test whether this single quantitative score can reliably dist
 df_feat_stl <- df_monthly_rate_tsibble |>
   features(rate_per_1000, feat_stl)
 
-df_feat_stl
+df_feat_stl |> gt()  
 ```
 
 # Findings:
