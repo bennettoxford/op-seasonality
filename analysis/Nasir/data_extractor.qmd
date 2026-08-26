@@ -26,6 +26,7 @@ Before running the notebook for data fetching, kindly check the dates and BNF co
 ```{r}
 #| label: setup
 #| warning: false
+#| code-fold: true
 
 library(tidyverse)
 # library(opr)
@@ -35,20 +36,29 @@ library(here)
 library(glue)
 ```
 
-
 ```{r}
 #| label: variables
 
-BNF_ANTIDEPRESSANTS <- "0403%"
-BNF_ANTIHISTAMINES <- "030401%"
-BNF_NORETHISTERONE <- "0604012P0%"
-BNF_ANTIPSYCHOTICS <- "040202%"
-
-# test set of 4 drugs
+# dev set of 4 drugs
 SERTRALINE_HCL <- "0403030Q0%"
 ESCITALOPRAM <- "0403030X0%"
 LORATADINE <- "0304010D0%"
 FEXOFENADINE_HCL <- "0304010E0%"
+DEV_CODES <- c(SERTRALINE_HCL, ESCITALOPRAM, FEXOFENADINE_HCL, LORATADINE)
+
+# test drug set
+FLUPENTIXOL <- "0402020G0%"
+PALIPERIDONE <- "0402020AB%"
+ZUCLOPENTHIXOL <- "0402020Z0%"
+NORETHISTERONE <- "0604012P0%"
+CELECOXIB <- "1001010AH%"
+TEST_CODES <- c(
+  FLUPENTIXOL,
+  PALIPERIDONE,
+  ZUCLOPENTHIXOL,
+  NORETHISTERONE,
+  CELECOXIB
+)
 
 DATE_START <- "2016-05-01"
 DATE_END <- "2026-04-01"
@@ -56,39 +66,9 @@ DATE_END <- "2026-04-01"
 
 # Drug definition
 
-@tbl-bnf-codes shows the list of chemicals and sections whose data will be extracted for this study.
+@tbl-dev-drugs and @tbl-test-drugs show the list of chemicals and sections whose data will be extracted for this study.
 
-```{r}
-#| label: tbl-product-codes
-#| tbl-cap: BNF codes for the drugs/drug groups used in this study
-#| code-fold: true
-
-codes <- c(
-  "0403*******",
-  "030401*****",
-  "0604012P0",
-  "040202*****"
-)
-drug_names <- c(
-  "Antidepressants",
-  "Antihistamines",
-  "Norethisterone",
-  "Depot Antipsychotics"
-)
-
-data.frame(
-  `Chemical/Section Name` = drug_names,
-  `BNF Code` = codes,
-  check.names = FALSE
-) |>
-  gt() |>
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_column_labels(everything())
-  )
-```
-
-
+# Fetch data
 Connect to BigQuery. See [here](https://bennettoxford.github.io/opr/articles/opr.html#connect).
 
 ```{r}
@@ -98,7 +78,6 @@ Connect to BigQuery. See [here](https://bennettoxford.github.io/opr/articles/opr
 CONN <- connect_bq()
 ```
 
-# Fetch data
 Query the `normalised_prescribing` table to fetch the data for the BNF codes. The function below takes the connection object and either display the query or collect the data, based on the `display_query` argument:
 
 ```{r}
@@ -139,29 +118,22 @@ fetch_bnf_codes <- function(bnf_codes, display_query = TRUE) {
 }
 ```
 
-This emits the query for fetching the antidepressants data as an example:
-```{r}
-#| label: sql-fetch-presc
+This emits the query for fetching the prescribing data for the development drugs as an example:
 
-fetch_presc_data(
-  BNF_ANTIDEPRESSANTS,
-  display_query = TRUE
-)
+```{r}
+#| label: sql-dev-codes
+
+fetch_presc_data(DEV_CODES, display_query = TRUE)
 ```
 
-## Test drugs
-The data for the four drugs/chemicals in @tbl-dev-codes will be used in developing the pipeline in the first instance, while other groups will brought into the picture as development matures.
+## Development drugs
+The data for the four drugs/chemicals in @tbl-dev-drugs will be used in developing the pipeline in the first instance, while other drugs will used for testing after implementation is complete.
 
 ```{r}
-#| label: tbl-dev-codes
-#| tbl-cap: Test drugs for initial pipeline development
+#| label: tbl-dev-drugs
+#| tbl-cap: Drugs for initial pipeline development
+#| code-fold: true
 
-codes <- c(
-  "0403030Q0%",
-  "0403030X0%",
-  "0304010D0%",
-  "0304010E0%"
-)
 drug_names <- c(
   "Sertraline",
   "Escitalopram",
@@ -171,7 +143,7 @@ drug_names <- c(
 
 data.frame(
   `Chemical Name` = drug_names,
-  `BNF Code` = codes,
+  `BNF Code` = DEV_CODES,
   check.names = FALSE
 ) |>
   gt() |>
@@ -182,26 +154,13 @@ data.frame(
 ```
 
 ```{r}
-#| label: sql-dev-codes
-
-dev_codes <- c(SERTRALINE_HCL, ESCITALOPRAM, FEXOFENADINE_HCL, LORATADINE)
-fetch_presc_data(dev_codes, display_query = TRUE)
-```
-
-```{r}
-#| label: tbl-dev-presc
+#| label: tbl-presc_dev
 #| tbl-cap: Data for Sertraline, Escitalopram, Loratadine, and fexofenadine
 #| code-fold: true
 
-df_dev_drugs <- fetch_presc_data(dev_codes, display_query = FALSE)
+df_presc_dev <- fetch_presc_data(DEV_CODES, display_query = FALSE)
 
-save_file <- glue("dev_drugs_{DATE_START}_{DATE_END}.parquet")
-write_parquet(
-  df_dev_drugs,
-  here("data-raw", "nasir", save_file)
-)
-
-head(df_dev_drugs, 5) |> gt()
+head(df_presc_dev, 5)
 ```
 
 ```{r}
@@ -209,180 +168,76 @@ head(df_dev_drugs, 5) |> gt()
 #| tbl-cap: BNF details for  Sertraline, Escitalopram, Loratadine, and fexofenadine
 #| code-fold: true
 
-df_bnf_dev <- unique(df_dev_drugs$bnf_code) |>
+df_bnf_dev <- unique(df_presc_dev$bnf_code) |>
   fetch_bnf_codes(display_query = FALSE)
 
-save_file <- glue("bnf_dev_{DATE_START}_{DATE_END}.parquet")
+head(df_bnf_dev, 5)
+```
+
+```{r}
+#| label: all-dev-data
+
+df_dev_drugs <- df_presc_dev |>
+  left_join(df_bnf_dev, c("bnf_code" = "presentation_code"))
+
+save_file <- glue("df_dev_drugs_{DATE_START}_{DATE_END}.parquet")
 write_parquet(
-  df_bnf_dev,
+  df_dev_drugs,
   here("data-raw", "nasir", save_file)
 )
 
-head(df_bnf_dev, 5) |> gt()
+head(df_dev_drugs, 5)
 ```
 
-## Antidepressants
-Fetch the data for antidepressants.
+## Test drugs
+
+These drugs are used to test the output of the pipeline after full implementation.
 
 ```{r}
-#| label: antidepressants
-#| eval: false
-
-df_antidepressants <- fetch_presc_data(
-  BNF_ANTIDEPRESSANTS,
-  display_query = FALSE
-)
-```
-
-```{r}
-#| label: tbl-antidepressants
+#| label: tbl-test-drugs
+#| tbl-cap: Drugs for testing the pipeline
 #| code-fold: true
-#| eval: false
 
-gt(head(df_antidepressants, 5))
-```
-
-Writing to a parquet file.
-```{r}
-#| label: save-antidepressants
-#| eval: false
-
-save_file <- glue("df_antidepressants_{DATE_START}_{DATE_END}.parquet")
-write_parquet(
-  df_antidepressants,
-  here("data-raw", "nasir", save_file)
+drug_names <- c(
+  "Flupentixol",
+  "Paliperidone",
+  "Zuclopenthixol",
+  "Norethisterone",
+  "Celecoxib"
 )
-```
 
-## Antihistamines
-```{r}
-#| label: antihistamines
-#| eval: false
-
-df_antihistamines <- fetch_presc_data(
-  BNF_ANTIHISTAMINES,
-  display_query = FALSE
-)
-```
-
-```{r}
-#| label: tbl-antihistamines
-#| code-fold: true
-#| eval: false
-
-gt(head(df_antihistamines, 5))
-```
-
-```{r}
-#| label: save-antihistamines
-#| eval: false
-
-save_file <- glue("df_antihistamines_{DATE_START}_{DATE_END}.parquet")
-write_parquet(
-  df_antihistamines,
-  here("data-raw", "nasir", save_file)
-)
-```
-
-## Depot Antipsychotics
-```{r}
-#| label: antipsychotics
-#| eval: false
-
-df_antipsychotics <- fetch_presc_data(
-  BNF_ANTIPSYCHOTICS,
-  display_query = FALSE
-)
-```
-
-```{r}
-#| label: tbl-antipsychotics
-#| code-fold: true
-#| eval: false
-
-gt(head(df_antipsychotics, 5))
-```
-
-```{r}
-#| label:  save-antipsychotics
-#| eval: false
-
-save_file <- glue("df_antipsychotics_{DATE_START}_{DATE_END}.parquet")
-write_parquet(
-  df_antipsychotics,
-  here("data-raw", "nasir", save_file)
-)
-```
-
-## Norethisterone
-```{r}
-#| label: norethisterone
-#| eval: false
-
-df_norethisterone <- fetch_presc_data(
-  BNF_NORETHISTERONE,
-  display_query = FALSE
-)
-```
-
-```{r}
-#| label: tbl-norethisterone
-#| code-fold: true
-#| eval: false
-
-gt(head(df_norethisterone, 5))
-```
-
-```{r}
-#| label: save-norethisterone
-#| eval: false
-
-save_file <- glue("df_norethisterone_{DATE_START}_{DATE_END}.parquet")
-write_parquet(
-  df_norethisterone,
-  here("data-raw", "nasir", save_file)
-)
-```
-
-## BNF details
-
-Fetch details (mostly names) of each medicinal product/presentations included in all the data extracted:
-```{r}
-#| label: sql-fetch-bnf-codes
-#| eval: false
-
-c(
-  df_antidepressants$bnf_code,
-  df_antihistamines$bnf_code,
-  df_antipsychotics$bnf_code,
-  df_norethisterone$bnf_code
+data.frame(
+  `Chemical Name` = drug_names,
+  `BNF Code` = TEST_CODES,
+  check.names = FALSE
 ) |>
-  unique() |>
-  fetch_bnf_codes(display_query = TRUE)
+  gt() |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_column_labels(everything())
+  )
 ```
 
 ```{r}
-#| label: tbl-bnf-codes
-#| tbl-cap: BNF details of drugs in the fetched data
+#| label: all-test-data
+#| tbl-cap: Data for test drugs
 #| code-fold: true
-#| eval: false
 
-df_bnf_codes <- c(
-  df_antidepressants$bnf_code,
-  df_antihistamines$bnf_code,
-  df_antipsychotics$bnf_code,
-  df_norethisterone$bnf_code
-) |>
-  unique() |>
+df_presc_test <- fetch_presc_data(TEST_CODES, display_query = FALSE)
+
+df_bnf_test <- unique(df_presc_test$bnf_code) |>
   fetch_bnf_codes(display_query = FALSE)
 
-save_file <- glue("df_bnf_codes_{DATE_START}_{DATE_END}.parquet")
+df_test_drugs <- df_presc_test |>
+  left_join(df_bnf_test, c("bnf_code" = "presentation_code"))
+
+save_file <- glue("df_test_drugs_{DATE_START}_{DATE_END}.parquet")
 write_parquet(
-  df_bnf_codes,
+  df_test_drugs,
   here("data-raw", "nasir", save_file)
 )
 
-head(df_bnf_codes, 5) |> gt()
+head(df_test_drugs, 5)
 ```
 
 ## NHSE regions
