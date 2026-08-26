@@ -1,6 +1,7 @@
 ---
 author: Nasir Abdulrasheed
 title: OpenPrescribing Seasonality Detection Pipeline
+sidebar: nasir
 execute: 
   echo: true
   warning: false
@@ -15,29 +16,15 @@ format:
     smooth-scroll: true
     respect-user-color-scheme: true
     theme:
-     light: litera
+     light: cosmo
      dark: cyborg
 bibliography: cite/packages.bib
 nocite: |
-  @R-tidyverse
-  @R-arrow
-  @R-gt
-  @R-webshot2
-  @R-fpp3
-  @R-bizdays
-  @R-timeDate
-  @R-patchwork
-  @R-here
-  @R-glue
-  @R-purrr
-  @R-urca
-  @R-ggrepel
+  @*
 csl: cite/apa.csl
 ---
 
-# Pipeline Development
-
-## Introduction
+# Introduction
 The aim of this project is to create a robust pipeline in `R` that automates the detection of seasonal patterns in English prescribing using data from [OpenPrescribing](https://openprescribing.net). The ten steps of the pipeline are depicted in @fig-pipeline.
 
 ::: {#fig-pipeline}
@@ -80,7 +67,7 @@ DATE_START <- "2016-05-01"
 DATE_END <- "2026-04-01"
 ```
 
-## Step 1: Load data
+# Step 1: Load data
 Loading data from disk. @tbl-load-data shows the expected shape of the data expected to be fed into the pipeline.
 
 ```{r}
@@ -98,7 +85,7 @@ head(DF_PRESC, 5) |> gt()
 
 The data used spans exactly `r {N_MONTHS}` months (`r ({N_MONTHS / 12})` years).
 
-## Step 2: Preprocessing
+# Step 2: Preprocessing
 
 To normalise total monthly items, the number of [dispensing days](https://www.nhsbsa.nhs.uk/prescription-data/understanding-our-data/financial-forecasting) in each month in the data was computed:
 
@@ -156,7 +143,7 @@ df_fexofenadine <- filter(DF_PRESC_AGG, chemical_code == FEXOFENADINE_HCL)
 head(DF_PRESC_AGG, 5) |> gt()
 ```
 
-## Step 3: Visualisation
+# Step 3: Visualisation
 For all chemicals present in the data, we plotted [time, seasonal, seasonal subseries](https://otexts.com/fpp3/graphics.html), and [ACF](https://en.wikipedia.org/wiki/Autocorrelation) plots.
 
 ```{r}
@@ -232,7 +219,7 @@ visualise_ts <- function(ts) {
 visualise_ts(df_fexofenadine)
 ```
 
-## Step 4: Detrending
+# Step 4: Detrending
 
 In this step, the detrended time series is obtained from either an [STL](https://otexts.com/fpp3/stl.html) decompoisition, [LOESS](https://en.wikipedia.org/wiki/Local_regression), or [linear model](https://otexts.com/fpp3/regression-intro.html) of the original time series. All three methods were tested and the results compared. The detrended series is then plotted as shown in @fig-detrended-plots. [Seasonal strength scores](https://otexts.com/fpp3/stlfeatures.html#stlfeatures), trough and peak months are also computed using the `feats::feat_stl()` function.
 
@@ -385,7 +372,7 @@ strength_stl <- function(ts_agg) {
 }
 ```
 
-## Step 5 & 6: FFT filtering and candidate periods selection
+# Step 5 & 6: FFT filtering and candidate periods selection
 
 A fast fourier transform ([FFT](https://en.wikipedia.org/wiki/Fast_Fourier_transform)) of the detrended time series is taken to see the component signals (seasonalities) and their respective amplitudes/strength. For computing the FFT of the series, we use the last $N$ months of the series that makes up full years. $N$ is given by:
 
@@ -516,7 +503,7 @@ score <- function(ts_dable, top_k = 1) {
 }
 ```
 
-## Step 7 & 8: DHR Modelling and Selection
+# Step 7 & 8: DHR Modelling and Selection
 
 In this step, we fit Dynamic Harmonic Regression([DHR](https://otexts.com/fpp3/dhr.html)) models to the aggregated time series data. Each model uses the each candidate period ($p$) as its fundamental frequency/period and set $K$ (the number of harmonics to include) to be a maximum of $p // 2$ (its Nyquist). Therefore, the maximum number of models fitted is given by:
 
@@ -631,7 +618,7 @@ fit_models <- function(ts, df_periods, max_k = 6) {
 }
 ```
 
-## Step 9: Summary report
+# Step 9: Summary report
 
 A summary table is constructed with the following information:
 
@@ -715,7 +702,7 @@ generate_report <- function(
 }
 ```
 
-## Full Pipeline
+# Full Pipeline
 Putting it all together.
 
 ### Aggregation and Visualisation 
@@ -864,7 +851,7 @@ gt(summary_tbl) |>
   )
 ```
 
-## References
+# References
 
 ::: {#refs}
 :::

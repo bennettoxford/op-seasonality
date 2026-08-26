@@ -1,8 +1,10 @@
 ---
 author: Nasir Abdulrasheed
 title: Data Extraction for OpenPrescribing Seasonality
+sidebar: nasir
 execute: 
   echo: true
+  eval: false
 format:
   html: 
     toc: true
@@ -29,7 +31,7 @@ Before running the notebook for data fetching, kindly check the dates and BNF co
 #| code-fold: true
 
 library(tidyverse)
-# library(opr)
+library(opr)
 library(arrow)
 library(gt)
 library(here)
@@ -160,7 +162,7 @@ data.frame(
 
 df_presc_dev <- fetch_presc_data(DEV_CODES, display_query = FALSE)
 
-head(df_presc_dev, 5)
+head(df_presc_dev, 5) |> gt()
 ```
 
 ```{r}
@@ -171,7 +173,7 @@ head(df_presc_dev, 5)
 df_bnf_dev <- unique(df_presc_dev$bnf_code) |>
   fetch_bnf_codes(display_query = FALSE)
 
-head(df_bnf_dev, 5)
+head(df_bnf_dev, 5) |> gt()
 ```
 
 ```{r}
@@ -186,7 +188,7 @@ write_parquet(
   here("data-raw", "nasir", save_file)
 )
 
-head(df_dev_drugs, 5)
+head(df_dev_drugs, 5) |> gt()
 ```
 
 ## Test drugs
@@ -237,7 +239,7 @@ write_parquet(
   here("data-raw", "nasir", save_file)
 )
 
-head(df_test_drugs, 5)
+head(df_test_drugs, 5) |> gt()
 ```
 
 ## NHSE regions

@@ -3,9 +3,12 @@ project:
   render:
     - analysis/index.qmd
     - analysis/Nasir/autodetector-normalised.qmd
+    - analysis/Nasir/data_extractor.qmd
+    - analysis/Nasir/autodetector-test.qmd
     - analysis/Najma/project.qmd
-    
+
 website:
+  title: OP Seasonality
   navbar:
     left:
       - href: analysis/index.qmd
@@ -15,6 +18,22 @@ website:
       - href: analysis/Najma/project.qmd
         text: Najma
 
+  sidebar:
+    - id: nasir
+      title: Nasir
+      style: docked
+      contents:
+        - href: analysis/Nasir/autodetector-normalised.qmd
+          text: Pipeline
+        - href: analysis/Nasir/data_extractor.qmd
+          text: Data Extraction
+        - href: analysis/Nasir/autodetector-test.qmd
+          text: Test
+
 format:
   html:
-    theme: cosmo
+    smooth-scroll: true
+    respect-user-color-scheme: true
+    theme:
+      light: cosmo
+      dark: cyborg

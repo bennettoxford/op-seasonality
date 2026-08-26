@@ -1,6 +1,7 @@
 ---
 author: Nasir Abdulrasheed
 title: Seasonality Detection Pipeline - Test
+sidebar: nasir
 execute: 
   echo: false
   warning: false
@@ -15,7 +16,7 @@ format:
     smooth-scroll: true
     respect-user-color-scheme: true
     theme:
-     light: litera
+     light: cosmo
      dark: cyborg
 ---
 
