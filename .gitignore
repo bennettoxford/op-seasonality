@@ -33,5 +33,6 @@ analysis/**/*.html
 # R env files
 .Renviron
 
-/.quarto/
+.quarto/
 **/*.quarto_ipynb
+_site/
