@@ -306,7 +306,7 @@ combined_plot2_benchmark
 ```{r}
 #| label: fig-visualise-subseries2
 #| eval: true
-#| output: false
+#| output: true
 #| fig-width: 10
 #| fig-height: 8
 
