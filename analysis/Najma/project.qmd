@@ -144,9 +144,9 @@ write_parquet(
 The extraction produced a monthly time series for each medicine, providing the basis for subsequent seasonal analysis.
 
 ```{r}
-#| label: tbl-load-data
+#| label: load-data
 #| eval: true
-#| output: true
+#| output: false
 df_prescribing <- read_parquet(
   here("data-raw", "najma", "df_prescribing.parquet")
 )
@@ -216,7 +216,6 @@ Before applying any quantitative measure, we first inspect seasonality visually 
 #| output: true
 #| fig-width: 10
 #| fig-height: 10
-#| out-width: "100%"
 
 df_monthly_rate_tsibble <- df_monthly_rate |>
   mutate(month = yearmonth(month)) |>
@@ -259,7 +258,7 @@ combined_plot1_benchmark
 #| output: true
 #| fig-width: 10
 #| fig-height: 7
-#| out-width: "100%"
+
 combined_plot1_negative
 ```
 
@@ -281,7 +280,7 @@ As a complementary view, `gg_subseries()` groups all observations by month (all 
 #| output: true
 #| fig-width: 10
 #| fig-height: 20
-#| out-width: "100%"
+
 
 ## building list of subseries plots
 plot_list2 <- purrr::map(drugs, function(d) {
@@ -301,21 +300,20 @@ names(plot_list2) <- drugs
 combined_plot2_benchmark <- wrap_plots(plot_list2[benchmark_drugs], ncol = 1) +
   plot_annotation(title = "Expected seasonal (benchmark drugs)")
 
-## combine negative control (expected flat) drugs into one figure
-combined_plot2_negative <- wrap_plots(plot_list2[negative_controls], ncol = 1) +
-  plot_annotation(title = "Expected minimal/no seasonality (negative controls)")
-
 combined_plot2_benchmark
-combined_plot2_negative
 ```
 
 ```{r}
 #| label: fig-visualise-subseries2
 #| eval: true
 #| output: false
-#| fig-width: 9
+#| fig-width: 10
 #| fig-height: 8
-#| out-width: "100%"
+
+## combine negative control (expected flat) drugs into one figure
+combined_plot2_negative <- wrap_plots(plot_list2[negative_controls], ncol = 1) +
+  plot_annotation(title = "Expected minimal/no seasonality (negative controls)")
+
 combined_plot2_negative
 ```
 
@@ -398,7 +396,6 @@ We plot the full decomposition for both the positive and negative controls to un
 #| output: true
 #| fig-width: 10
 #| fig-height: 20
-#| out-width: "100%"
 
 ## STL for every drug at once
 df_stl_components <- df_monthly_rate_tsibble |>
@@ -438,7 +435,7 @@ STL allowed the recurring seasonal component to be separated from longer-term tr
 #| output: true
 #| fig-width: 10
 #| fig-height: 12
-#| out-width: "100%"
+
 combined_plot3_negative
 ```
 
