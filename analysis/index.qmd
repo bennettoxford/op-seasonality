@@ -5,18 +5,20 @@ format: html
 
 # Who we are
 
-We, [Najma Moallin](https://www.hdruk.ac.uk/people/najma-moallin/) and [Nasir Abdulrasheed](https://www.hdruk.ac.uk/people/nasir-abdulrasheed/), joined the Bennett Institute for Applied Data Science this summer through HDRUK’s 2026 Health Data Science Internship Programme. In this blog we share more about out time and work at the Bennett Institute.
+We, [Najma Moallin](https://www.hdruk.ac.uk/people/najma-moallin/) and [Nasir Abdulrasheed](https://www.hdruk.ac.uk/people/nasir-abdulrasheed/), joined the Bennett Institute for Applied Data Science this summer through HDRUK’s 2026 Health Data Science Internship Programme. 
 
 # Introduction 
 
-A bit of background on Najma and Nasir and interest in this area
+Najma is a Economics graduate from the University of Reading with a strong interest in applying quantitative analysis to real-world policy challenges. Najma's academic work has focused on econometrics, labour markets and applied research, including projects on the motherhood pay penalty and workforce shortages in UK health and social care.
+
+Nasir is a medical doctor with over four years of clinical experience. His passion for applying digital technology to healthcare drives his adventures in software development and data analytics.
 
 # Seasonality Projects
 
-Brief description of Najma's project. The full project is [here](Najma/project.qmd)
+Understanding Seasonal Patterns in NHS Prescribing Data: In this project Najma investigated seasonal patterns in prescribing in English primary care using routinely collected NHS prescribing data from OpenPrescribing. Najma analysed a selection of medicines with expected seasonal and non-seasonal patterns using time-series visualisation and STL decomposition to identify and interpret recurring changes in prescribing over time. The full project is [here](Najma/project.qmd)
 
-Brief description of Nasir's project. The full project is [here](Nasir/autodetector-normalised.qmd)
+Automating Seasonality Detection In English Primary Care Prescribing Data: In this project Nasir designed and implemented an automated seasonality detection pipeline using OpenPrescribing data in order to facilitate seasonality detection. The full project is [here](Nasir/autodetector-normalised.qmd)
 
 # Main takeaways
 
-A few brief statements
+In these projects Najma and Nasir gained hands on experience of using real world prescribing data. They learned about creating reproducible and updatable pipelines using R, Quarto, and github. They showcased their project management skills, as well as a whole range of skills required to be independent researchers. One of their major takeaways was the importance of holistic approaches to understanding time series data in health research, and the importance of contextualisation from clinical experts.  
